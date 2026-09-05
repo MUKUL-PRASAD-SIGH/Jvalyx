@@ -12,6 +12,12 @@ import {
   routeEvent, 
   generatePlumeCorridor 
 } from './utils/math';
+import { 
+  BUNDLED_FIRMS_INDIA, 
+  processFIRMSHotspot, 
+  fetchLiveFIRMS,
+  type FIRMSRecord 
+} from './services/firms';
 
 export function App() {
   // Scenario & Replay Clock State
@@ -19,6 +25,11 @@ export function App() {
   const [currentFrameIndex, setCurrentFrameIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+
+  // NASA FIRMS Live Mode State
+  const [isFirmsMode, setIsFirmsMode] = useState<boolean>(false);
+  const [firmsHotspots, setFirmsHotspots] = useState<FIRMSRecord[]>(BUNDLED_FIRMS_INDIA);
+  const [selectedHotspotIndex, setSelectedHotspotIndex] = useState<number>(0);
 
   // Counterfactual Simulation State (Signature Differentiator)
   const [deviation, setDeviation] = useState<number>(0.0);
@@ -47,6 +58,7 @@ export function App() {
 
   // Handle Scenario Switch
   const handleSelectScenario = (scenarioId: string) => {
+    setIsFirmsMode(false);
     setSelectedScenarioId(scenarioId);
     setCurrentFrameIndex(0);
     setIsPlaying(false);
@@ -58,7 +70,7 @@ export function App() {
   // Replay Clock Timer
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    if (isPlaying) {
+    if (isPlaying && !isFirmsMode) {
       const delay = Math.max(800, 3000 / playbackSpeed);
       interval = setInterval(() => {
         setCurrentFrameIndex((prev) => {
@@ -71,10 +83,42 @@ export function App() {
       }, delay);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, playbackSpeed, currentScenario.frames.length]);
+  }, [isPlaying, playbackSpeed, currentScenario.frames.length, isFirmsMode]);
 
-  // Base Frame from scenario replay pack
-  const baseFrame = currentScenario.frames[currentFrameIndex] || currentScenario.frames[0];
+  // Handle FIRMS Toggle
+  const handleToggleFirmsMode = () => {
+    setIsFirmsMode((prev) => !prev);
+    setIsPlaying(false);
+    setDeviation(0.0);
+    setIsSimulated(false);
+    setManualRouteOverride(null);
+  };
+
+  // Handle Custom Key Fetch
+  const handleFetchCustomFirmsKey = async (key: string) => {
+    try {
+      const records = await fetchLiveFIRMS(key);
+      if (records.length > 0) {
+        setFirmsHotspots(records);
+        setSelectedHotspotIndex(0);
+        setIsFirmsMode(true);
+        alert(`Successfully fetched ${records.length} live active fire hotspots from NASA FIRMS!`);
+      } else {
+        alert('NASA FIRMS returned 0 active hotspots for the specified region.');
+      }
+    } catch (err: unknown) {
+      alert(`NASA FIRMS Fetch Error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Base Frame from scenario replay pack OR NASA FIRMS active record
+  const baseFrame: ScenarioFrame = useMemo(() => {
+    if (isFirmsMode && firmsHotspots.length > 0) {
+      const record = firmsHotspots[selectedHotspotIndex] || firmsHotspots[0];
+      return processFIRMSHotspot(record, selectedHotspotIndex);
+    }
+    return currentScenario.frames[currentFrameIndex] || currentScenario.frames[0];
+  }, [isFirmsMode, firmsHotspots, selectedHotspotIndex, currentScenario, currentFrameIndex]);
 
   // Dynamically compute frame with Counterfactual adjustments if active
   const effectiveFrame: ScenarioFrame = useMemo(() => {
@@ -100,12 +144,10 @@ export function App() {
     const mean = baseFrame.fusedEvent.baseline_frp_mean;
     const std = baseFrame.fusedEvent.baseline_frp_std;
 
-    // Simulated FRP growth proportional to deviation
     const simFRP = baseFRP + deviation * 250;
     const simZ = Number(((simFRP - mean) / Math.max(std, 0.1)).toFixed(2));
     const simCluster = Math.min(8, Math.max(1, Math.round(1 + deviation * 6)));
 
-    // Shift class probabilities toward Class 1 (Industrial)
     const p1 = Math.min(0.96, Math.max(0.05, 0.10 + deviation * 0.85));
     const p5 = Math.max(0.01, 1 - p1 - 0.05);
     const simProbs = {
@@ -236,11 +278,14 @@ export function App() {
         playbackSpeed={playbackSpeed}
         routeState={effectiveFrame.decision.route_state}
         isSimulated={isSimulated}
+        isFirmsMode={isFirmsMode}
         onSelectScenario={handleSelectScenario}
         onTogglePlay={() => setIsPlaying(!isPlaying)}
         onReset={handleResetScenario}
         onSpeedChange={setPlaybackSpeed}
         onOpenAuditLog={() => setIsAuditModalOpen(true)}
+        onToggleFirmsMode={handleToggleFirmsMode}
+        onFetchCustomFirmsKey={handleFetchCustomFirmsKey}
       />
 
       {/* 2. Streamlined Two-Panel Layout */}
@@ -252,6 +297,14 @@ export function App() {
             <TacticalMap
               frame={effectiveFrame}
               facility={currentScenario.facility}
+              firmsHotspots={isFirmsMode ? firmsHotspots : undefined}
+              selectedHotspotIndex={isFirmsMode ? selectedHotspotIndex : undefined}
+              onSelectHotspot={(idx) => {
+                setSelectedHotspotIndex(idx);
+                setDeviation(0.0);
+                setIsSimulated(false);
+                setManualRouteOverride(null);
+              }}
             />
           </div>
 
