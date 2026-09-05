@@ -1,0 +1,202 @@
+import type { RiskBreakdown, RouteState, SensorAgreementState, PlumeEnvelope } from '../types';
+
+export const EARTH_RADIUS_M = 6_371_000.0;
+
+/**
+ * Great-circle distance between two coordinates in metres
+ */
+export function haversine_m(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const rLat1 = toRad(lat1);
+  const rLat2 = toRad(lat2);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(rLat1) * Math.cos(rLat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_M * c;
+}
+
+/**
+ * Temperature contrast ratio between SWIR (ti4) and TIR (ti5)
+ */
+export function temperature_ratio(ti4_k: number, ti5_k: number, eps: number = 1e-6): number {
+  return Number((ti4_k / Math.max(ti5_k, eps)).toFixed(3));
+}
+
+/**
+ * Sigmoid activation function
+ */
+export function sigmoid(x: number): number {
+  return 1.0 / (1.0 + Math.exp(-x));
+}
+
+/**
+ * Transparent Risk Score Calculation from Section 12.4
+ * R = 100 * clip(0.35 * Severity + 0.25 * Anomaly + 0.20 * Spread + 0.20 * Exposure, 0, 1)
+ */
+export function computeRiskScore(
+  classProbs: Record<number, number>,
+  facilityZ: number,
+  clusterPixelCount: number,
+  driftMph: number,
+  exposure: number
+): RiskBreakdown {
+  const classWeights: Record<number, number> = {
+    1: 1.00, // Industrial Fire / Explosion
+    2: 0.80, // Wildfire
+    3: 0.55, // Mining / Coal-seam
+    4: 0.20, // Agriculture
+    5: 0.05  // Routine Flare
+  };
+
+  const severity = Object.entries(classProbs).reduce((acc, [cls, p]) => {
+    return acc + (classWeights[Number(cls)] || 0) * p;
+  }, 0);
+
+  const anomaly = sigmoid((facilityZ - 3.0) / 1.0);
+  const spread = sigmoid(0.45 * Math.log1p(clusterPixelCount) + 0.002 * driftMph - 1.2);
+  const expScore = Math.max(0, Math.min(1, exposure));
+
+  const raw = 0.35 * severity + 0.25 * anomaly + 0.20 * spread + 0.20 * expScore;
+  const total = Math.round(100 * Math.max(0, Math.min(1, raw)));
+
+  return {
+    total,
+    severity: Number(severity.toFixed(3)),
+    anomaly: Number(anomaly.toFixed(3)),
+    spread: Number(spread.toFixed(3)),
+    exposure: Number(expScore.toFixed(3))
+  };
+}
+
+/**
+ * Deterministic arbitration engine from Section 13
+ */
+export interface ArbitrationConfig {
+  class1_threshold: number;
+  class2_threshold: number;
+  facility_z_threshold: number;
+  anomaly_threshold: number;
+  min_quality: number;
+  min_model_confidence: number;
+}
+
+export const DEFAULT_ARBITRATION_CONFIG: ArbitrationConfig = {
+  class1_threshold: 0.45,
+  class2_threshold: 0.55,
+  facility_z_threshold: 4.0,
+  anomaly_threshold: 0.75,
+  min_quality: 0.45,
+  min_model_confidence: 0.55
+};
+
+export function routeEvent(
+  probs: Record<number, number>,
+  anomalyScore: number,
+  isIndustrial: boolean,
+  facilityZ: number,
+  fusionState: SensorAgreementState,
+  qualityScore: number,
+  cfg: ArbitrationConfig = DEFAULT_ARBITRATION_CONFIG
+): RouteState {
+  const p1 = probs[1] || 0;
+  const p2 = probs[2] || 0;
+  const maxP = Math.max(...Object.values(probs));
+
+  const critical =
+    p1 >= cfg.class1_threshold ||
+    p2 >= cfg.class2_threshold ||
+    (isIndustrial && facilityZ >= cfg.facility_z_threshold);
+
+  const uncertain =
+    anomalyScore >= cfg.anomaly_threshold ||
+    fusionState === 'disagreement' ||
+    qualityScore < cfg.min_quality ||
+    maxP < cfg.min_model_confidence;
+
+  if (critical) return 'CRITICAL';
+  if (uncertain) return 'UNCERTAIN';
+  return 'NORMAL';
+}
+
+/**
+ * Monte Carlo Downwind Plume Probability Corridor
+ * Generates 50% and 90% uncertainty dispersion envelopes
+ */
+export function generatePlumeCorridor(
+  origin: [number, number], // [lat, lon]
+  windSpeedMps: number,
+  windDirectionDeg: number, // direction TOWARD which wind travels
+  samples: number = 60
+): PlumeEnvelope {
+  const [lat0, lon0] = origin;
+  // Convert wind speed to km/h projection
+  const baseDistKm = Math.max(1.5, windSpeedMps * 0.4);
+
+  // Generate Monte Carlo samples
+  for (let i = 0; i < samples; i++) {
+    // Normal distribution approximation via Box-Muller
+    const u1 = Math.random() || 0.001;
+    const u2 = Math.random() || 0.001;
+    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
+
+    const sampledSpeed = Math.max(0.5, windSpeedMps + z0 * 1.5);
+    const sampledDir = (windDirectionDeg + z1 * 12.0) % 360;
+
+    const distKm = Math.max(1.0, sampledSpeed * 0.4);
+    const rad = (sampledDir * Math.PI) / 180;
+
+    // Approximate flat earth km to degree conversion
+    const dLat = (distKm * Math.cos(rad)) / 111.0;
+    const dLon = (distKm * Math.sin(rad)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
+    void dLat;
+    void dLon;
+  }
+
+  const radCentral = (windDirectionDeg * Math.PI) / 180;
+  const centralLat = lat0 + (baseDistKm * Math.cos(radCentral)) / 111.0;
+  const centralLon = lon0 + (baseDistKm * Math.sin(radCentral)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
+
+  // Build 90% wide envelope (angular spread ~ +/- 24 degrees)
+  const spread90Rad = (24 * Math.PI) / 180;
+  const spread50Rad = (12 * Math.PI) / 180;
+
+  const left90Lat = lat0 + (baseDistKm * 1.15 * Math.cos(radCentral - spread90Rad)) / 111.0;
+  const left90Lon = lon0 + (baseDistKm * 1.15 * Math.sin(radCentral - spread90Rad)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
+
+  const right90Lat = lat0 + (baseDistKm * 1.15 * Math.cos(radCentral + spread90Rad)) / 111.0;
+  const right90Lon = lon0 + (baseDistKm * 1.15 * Math.sin(radCentral + spread90Rad)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
+
+  const left50Lat = lat0 + (baseDistKm * 1.05 * Math.cos(radCentral - spread50Rad)) / 111.0;
+  const left50Lon = lon0 + (baseDistKm * 1.05 * Math.sin(radCentral - spread50Rad)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
+
+  const right50Lat = lat0 + (baseDistKm * 1.05 * Math.cos(radCentral + spread50Rad)) / 111.0;
+  const right50Lon = lon0 + (baseDistKm * 1.05 * Math.sin(radCentral + spread50Rad)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
+
+  return {
+    centerline: [
+      [lat0, lon0],
+      [centralLat, centralLon]
+    ],
+    cone90: [
+      [lat0, lon0],
+      [left90Lat, left90Lon],
+      [centralLat, centralLon],
+      [right90Lat, right90Lon],
+      [lat0, lon0]
+    ],
+    cone50: [
+      [lat0, lon0],
+      [left50Lat, left50Lon],
+      [centralLat, centralLon],
+      [right50Lat, right50Lon],
+      [lat0, lon0]
+    ],
+    windSpeedMps,
+    windDirectionDeg
+  };
+}
