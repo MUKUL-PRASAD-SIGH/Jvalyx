@@ -1,0 +1,17 @@
+versions:
+  model_version: stub-0.1.0
+  policy_version: arbitrator-0.1.0
+
+arbitration:
+  class1_threshold: 0.45
+  class2_threshold: 0.55
+  facility_z_threshold: 4.0
+  anomaly_threshold: 0.75
+  min_model_confidence: 0.55
+
+risk:
+  severity_weight: 0.35
+  anomaly_weight: 0.25
+  spread_weight: 0.20
+  exposure_weight: 0.20
+  exposure_default: 0.0
