@@ -1,9 +1,35 @@
-"""FastAPI application entrypoint for the Jvalyx backend."""
+"""FastAPI application entrypoint for the Jvalyx backend.
+
+Preferred launch is from the repo root (`python app.py` / `python -m backend` /
+`uvicorn backend.app:app`), but running this file directly from inside `backend/`
+also works — the block below puts the repo root on the path first.
+"""
+
+import contextlib
+from collections.abc import AsyncIterator
+
+if __name__ == "__main__" and __package__ in (None, ""):  # `python app.py` / `python backend/app.py`
+    import pathlib
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from backend.api import config as config_routes
+from backend.api import events as events_routes
+from backend.api import scenarios as scenario_routes
+from backend.api import ws as ws_routes
 from backend.config import load_config
+from backend.runtime import replay_worker
+
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+]
 
 
 class HealthResponse(BaseModel):
@@ -13,9 +39,46 @@ class HealthResponse(BaseModel):
     policy_version: str
 
 
+@contextlib.asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    yield
+    await replay_worker.shutdown()
+
+
 def create_app() -> FastAPI:
     config = load_config()
-    app = FastAPI(title="Jvalyx Backend", version="0.1.0")
+    app = FastAPI(title="Jvalyx Backend", version="0.1.0", lifespan=lifespan)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_origin_regex=r"http://localhost:\d+",
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/", tags=["system"])
+    async def index() -> dict:
+        return {
+            "service": "jvalyx-backend",
+            "version": app.version,
+            "model_version": config.versions.model_version,
+            "policy_version": config.versions.policy_version,
+            "docs": "/docs",
+            "endpoints": [
+                "GET /health",
+                "GET /config",
+                "GET /scenarios",
+                "POST /scenarios/{id}/start",
+                "POST /scenarios/{id}/reset",
+                "GET /events",
+                "GET /events/{id}",
+                "POST /events/{id}/simulate",
+                "POST /events/{id}/verify",
+                "GET /audit",
+                "WS /ws/events",
+            ],
+        }
 
     @app.get("/health", response_model=HealthResponse, tags=["system"])
     async def health() -> HealthResponse:
@@ -26,7 +89,26 @@ def create_app() -> FastAPI:
             policy_version=config.versions.policy_version,
         )
 
+    app.include_router(scenario_routes.router)
+    app.include_router(events_routes.router)
+    app.include_router(config_routes.router)
+    app.include_router(ws_routes.router)
+
     return app
 
 
 app = create_app()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Run the Jvalyx backend API")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--reload", action="store_true")
+    args = parser.parse_args()
+
+    uvicorn.run("backend.app:app", host=args.host, port=args.port, reload=args.reload, log_level="info")

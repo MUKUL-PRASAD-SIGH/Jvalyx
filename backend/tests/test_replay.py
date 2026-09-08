@@ -7,12 +7,14 @@ async def no_wait(_: float) -> None:
     return None
 
 
-def test_catalog_loads_the_two_committed_scenarios() -> None:
+def test_catalog_loads_the_committed_scenario_pack() -> None:
     catalog = ScenarioCatalog()
 
     assert [scenario.scenario_id for scenario in catalog.list()] == [
         "industrial_escalation",
         "persistent_flare",
+        "sensor_disagreement",
+        "wildfire",
     ]
     assert catalog.get("industrial_escalation").frames[-1].checkpoint == "critical_state"
     assert catalog.get("persistent_flare").mode.value == "HISTORICAL REPLAY"

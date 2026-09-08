@@ -101,3 +101,65 @@ body {
 .animate-thermal-pulse {
   animation: thermalPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* ------------------------------------------------------------------ */
+/* FIRMS fire map                                                      */
+/* ------------------------------------------------------------------ */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.firms-map {
+  background: #0a1620 !important;
+}
+
+.firms-map .leaflet-control-scale-line {
+  background: rgba(11, 15, 20, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.firms-map .leaflet-control-attribution {
+  background: rgba(11, 15, 20, 0.78) !important;
+  font-size: 9px !important;
+}
+
+.firms-fire-canvas {
+  image-rendering: pixelated;
+  transition: opacity 0.2s ease;
+}
+
+.firms-map.firms-measuring {
+  cursor: crosshair;
+}
+
+.firms-measure-tip {
+  background: #0ea5e9 !important;
+  color: #06263a !important;
+  border: none !important;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 1px 5px;
+}
+.firms-measure-tip::before {
+  border-top-color: #0ea5e9 !important;
+}
+
+.leaflet-tooltip {
+  background: #0b0f14;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.leaflet-tooltip::before {
+  border-top-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}

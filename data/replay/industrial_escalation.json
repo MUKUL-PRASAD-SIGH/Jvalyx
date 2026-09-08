@@ -1,0 +1,685 @@
+{
+  "schema_version": "replay-1.0.0",
+  "scenario_id": "industrial_escalation",
+  "title": "Mangalore Refinery \u2014 Thermal Escalation",
+  "description": "Routine gas flare transitioning into a crude tank-farm surge (Class 1 escalation).",
+  "mode": "HISTORICAL REPLAY",
+  "source_provenance": "Curated from historical NASA FIRMS VIIRS/MODIS detections over MRPL, Mangalore.",
+  "classification_note": "Escalation frames are illustrative. Stub inference stands in for the trained CatBoost/Isolation Forest models.",
+  "baseline": {
+    "facility_mean": 38.4,
+    "facility_std": 7.2,
+    "coordinate_mean": 38.4,
+    "coordinate_std": 7.2
+  },
+  "frames": [
+    {
+      "frame_id": "industrial_escalation:0",
+      "elapsed_seconds": 0.0,
+      "checkpoint": "baseline",
+      "detections": [
+        {
+          "detection_id": "det-viirs-01",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T10:14:22Z",
+          "latitude": 12.9782,
+          "longitude": 74.8379,
+          "frp_mw": 41.2,
+          "bright_ti4_k": 342.5,
+          "bright_ti5_k": 295.1,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.95,
+            "sun_glint_flag": false
+          }
+        }
+      ],
+      "context": {
+        "label": "T+00m: Baseline Operational Flaring",
+        "description": "Single thermal source at the primary flare stack. Radiation within normal historical distribution.",
+        "facility_id": "fac-mrpl-01",
+        "facility_name": "MRPL Petrochemical Complex",
+        "facility_type": "Petrochemical Refining",
+        "lulc_class": "industrial_developed",
+        "lulc_entropy_500m": 1.84,
+        "is_in_industrial_polygon": true,
+        "is_mine_polygon": false,
+        "distance_to_industrial_m": 0,
+        "persistence_score": 0.91,
+        "baseline_frp_mean": 38.4,
+        "baseline_frp_std": 7.2,
+        "sensor_agreement_state": "single_sensor",
+        "sensor_count": 1,
+        "data_quality_flag": "NOMINAL",
+        "data_quality_score": 0.95,
+        "frp_z_score": 0.39,
+        "facility_frp_zscore": 0.39,
+        "cluster_pixel_count": 1,
+        "centroid_drift_velocity_mph": 0.0,
+        "frp_trend_mw_per_hour": 1.2,
+        "stub_class_probabilities": {
+          "1": 0.05,
+          "2": 0.02,
+          "3": 0.01,
+          "4": 0.02,
+          "5": 0.9
+        },
+        "stub_anomaly_score": 0.12,
+        "recommended_action": "Routine tracking against 90-day baseline. No operator escalation.",
+        "historical_baseline_timeline": [
+          {
+            "day": "Day -80",
+            "mean": 37.8,
+            "upper1Sigma": 45.0,
+            "upper3Sigma": 59.4,
+            "observedFRP": 36.2
+          },
+          {
+            "day": "Day -60",
+            "mean": 38.1,
+            "upper1Sigma": 45.3,
+            "upper3Sigma": 59.7,
+            "observedFRP": 40.1
+          },
+          {
+            "day": "Day -40",
+            "mean": 38.3,
+            "upper1Sigma": 45.5,
+            "upper3Sigma": 59.9,
+            "observedFRP": 39.5
+          },
+          {
+            "day": "Day -20",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 37.8
+          },
+          {
+            "day": "Current",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 41.2
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": "industrial_escalation:1",
+      "elapsed_seconds": 600.0,
+      "checkpoint": "before_anomaly",
+      "detections": [
+        {
+          "detection_id": "det-viirs-01b",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T10:24:30Z",
+          "latitude": 12.9782,
+          "longitude": 74.838,
+          "frp_mw": 44.6,
+          "bright_ti4_k": 345.0,
+          "bright_ti5_k": 296.0,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.95,
+            "sun_glint_flag": false
+          }
+        }
+      ],
+      "context": {
+        "label": "T+10m: Routine Overpass \u2014 Pre-Anomaly",
+        "description": "Flare output nudges up but stays inside the +/-1 sigma operational envelope. Still a single persistent hotspot.",
+        "facility_id": "fac-mrpl-01",
+        "facility_name": "MRPL Petrochemical Complex",
+        "facility_type": "Petrochemical Refining",
+        "lulc_class": "industrial_developed",
+        "lulc_entropy_500m": 1.84,
+        "is_in_industrial_polygon": true,
+        "is_mine_polygon": false,
+        "distance_to_industrial_m": 0,
+        "persistence_score": 0.91,
+        "baseline_frp_mean": 38.4,
+        "baseline_frp_std": 7.2,
+        "sensor_agreement_state": "single_sensor",
+        "sensor_count": 1,
+        "data_quality_flag": "NOMINAL",
+        "data_quality_score": 0.95,
+        "frp_z_score": 0.86,
+        "facility_frp_zscore": 0.86,
+        "cluster_pixel_count": 1,
+        "centroid_drift_velocity_mph": 0.0,
+        "frp_trend_mw_per_hour": 20.4,
+        "stub_class_probabilities": {
+          "1": 0.08,
+          "2": 0.02,
+          "3": 0.01,
+          "4": 0.02,
+          "5": 0.87
+        },
+        "stub_anomaly_score": 0.21,
+        "recommended_action": "Continue routine tracking. Trend positive but within tolerance.",
+        "historical_baseline_timeline": [
+          {
+            "day": "Day -80",
+            "mean": 37.8,
+            "upper1Sigma": 45.0,
+            "upper3Sigma": 59.4,
+            "observedFRP": 36.2
+          },
+          {
+            "day": "Day -60",
+            "mean": 38.1,
+            "upper1Sigma": 45.3,
+            "upper3Sigma": 59.7,
+            "observedFRP": 40.1
+          },
+          {
+            "day": "Day -40",
+            "mean": 38.3,
+            "upper1Sigma": 45.5,
+            "upper3Sigma": 59.9,
+            "observedFRP": 39.5
+          },
+          {
+            "day": "Day -20",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 37.8
+          },
+          {
+            "day": "Current",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 44.6
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": "industrial_escalation:2",
+      "elapsed_seconds": 1200.0,
+      "checkpoint": "first_escalation",
+      "detections": [
+        {
+          "detection_id": "det-viirs-02a",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T10:34:10Z",
+          "latitude": 12.9782,
+          "longitude": 74.838,
+          "frp_mw": 62.4,
+          "bright_ti4_k": 368.1,
+          "bright_ti5_k": 298.4,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.95,
+            "sun_glint_flag": false
+          }
+        },
+        {
+          "detection_id": "det-viirs-02b",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T10:34:10Z",
+          "latitude": 12.9788,
+          "longitude": 74.841,
+          "frp_mw": 49.8,
+          "bright_ti4_k": 361.0,
+          "bright_ti5_k": 297.8,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.95,
+            "sun_glint_flag": false
+          }
+        },
+        {
+          "detection_id": "det-modis-01",
+          "sensor": "MODIS",
+          "timestamp": "2026-09-05T10:33:45Z",
+          "latitude": 12.979,
+          "longitude": 74.8398,
+          "frp_mw": 98.0,
+          "bright_ti4_k": 350.2,
+          "bright_ti5_k": 299.1,
+          "scan_km": 1.0,
+          "track_km": 1.0,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.9,
+            "sun_glint_flag": false
+          }
+        }
+      ],
+      "context": {
+        "label": "T+20m: Multi-Pixel Surge Detected",
+        "description": "Facility FRP spikes to 112 MW (Z = 10.2). Three adjacent thermal pixels ignite near crude storage sector.",
+        "facility_id": "fac-mrpl-01",
+        "facility_name": "MRPL Petrochemical Complex",
+        "facility_type": "Petrochemical Refining",
+        "lulc_class": "industrial_developed",
+        "lulc_entropy_500m": 1.84,
+        "is_in_industrial_polygon": true,
+        "is_mine_polygon": false,
+        "distance_to_industrial_m": 0,
+        "persistence_score": 0.91,
+        "baseline_frp_mean": 38.4,
+        "baseline_frp_std": 7.2,
+        "sensor_agreement_state": "agreement",
+        "sensor_count": 2,
+        "data_quality_flag": "NOMINAL",
+        "data_quality_score": 0.95,
+        "frp_z_score": 10.22,
+        "facility_frp_zscore": 10.22,
+        "cluster_pixel_count": 3,
+        "centroid_drift_velocity_mph": 240.0,
+        "frp_trend_mw_per_hour": 212.4,
+        "stub_class_probabilities": {
+          "1": 0.82,
+          "2": 0.08,
+          "3": 0.01,
+          "4": 0.01,
+          "5": 0.08
+        },
+        "stub_anomaly_score": 0.89,
+        "recommended_action": "Trigger high-priority industrial response. Mobilize on-site containment and generate plume dispersion corridor.",
+        "swir_nir_ratio": 1.48,
+        "delta_nbr": 0.42,
+        "delta_ndvi": -0.31,
+        "plume_wind_speed_mps": 6.5,
+        "plume_wind_direction_deg": 135,
+        "segmentation": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                12.9775,
+                74.8375
+              ],
+              [
+                12.9805,
+                74.8385
+              ],
+              [
+                12.9798,
+                74.843
+              ],
+              [
+                12.9765,
+                74.842
+              ],
+              [
+                12.9775,
+                74.8375
+              ]
+            ]
+          ],
+          "burnAreaM2": 28400,
+          "smokeAreaM2": 84000
+        },
+        "affected_assets": [
+          {
+            "id": "ast-01",
+            "name": "Crude Oil Storage Tank Farm 4",
+            "type": "tank_farm",
+            "latitude": 12.979,
+            "longitude": 74.842,
+            "distance_m": 420,
+            "criticality_weight": 0.95
+          },
+          {
+            "id": "ast-02",
+            "name": "National Highway 66 Corridor",
+            "type": "pipeline",
+            "latitude": 12.974,
+            "longitude": 74.831,
+            "distance_m": 850,
+            "criticality_weight": 0.7
+          },
+          {
+            "id": "ast-03",
+            "name": "Baikampady Residential Sector",
+            "type": "settlement",
+            "latitude": 12.969,
+            "longitude": 74.845,
+            "distance_m": 1250,
+            "population_at_risk": 14500,
+            "criticality_weight": 0.9
+          }
+        ],
+        "historical_baseline_timeline": [
+          {
+            "day": "Day -80",
+            "mean": 37.8,
+            "upper1Sigma": 45.0,
+            "upper3Sigma": 59.4,
+            "observedFRP": 36.2
+          },
+          {
+            "day": "Day -60",
+            "mean": 38.1,
+            "upper1Sigma": 45.3,
+            "upper3Sigma": 59.7,
+            "observedFRP": 40.1
+          },
+          {
+            "day": "Day -40",
+            "mean": 38.3,
+            "upper1Sigma": 45.5,
+            "upper3Sigma": 59.9,
+            "observedFRP": 39.5
+          },
+          {
+            "day": "Day -20",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 37.8
+          },
+          {
+            "day": "Current",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 112.2
+          }
+        ]
+      }
+    },
+    {
+      "frame_id": "industrial_escalation:3",
+      "elapsed_seconds": 2400.0,
+      "checkpoint": "critical_state",
+      "detections": [
+        {
+          "detection_id": "det-viirs-03a",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T10:54:10Z",
+          "latitude": 12.9785,
+          "longitude": 74.8385,
+          "frp_mw": 95.0,
+          "bright_ti4_k": 375.0,
+          "bright_ti5_k": 308.2,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.95,
+            "sun_glint_flag": false
+          }
+        },
+        {
+          "detection_id": "det-viirs-03b",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T10:54:10Z",
+          "latitude": 12.9795,
+          "longitude": 74.8425,
+          "frp_mw": 115.0,
+          "bright_ti4_k": 380.5,
+          "bright_ti5_k": 312.0,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.95,
+            "sun_glint_flag": false
+          }
+        },
+        {
+          "detection_id": "det-viirs-03c",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T10:54:10Z",
+          "latitude": 12.9802,
+          "longitude": 74.844,
+          "frp_mw": 80.0,
+          "bright_ti4_k": 369.0,
+          "bright_ti5_k": 304.5,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.95,
+            "sun_glint_flag": false
+          }
+        },
+        {
+          "detection_id": "det-modis-02",
+          "sensor": "MODIS",
+          "timestamp": "2026-09-05T10:53:15Z",
+          "latitude": 12.979,
+          "longitude": 74.841,
+          "frp_mw": 285.0,
+          "bright_ti4_k": 362.4,
+          "bright_ti5_k": 305.2,
+          "scan_km": 1.0,
+          "track_km": 1.0,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.9,
+            "sun_glint_flag": false
+          }
+        }
+      ],
+      "context": {
+        "label": "T+40m: Full Petrochemical Emergency",
+        "description": "Severe escalation: 290 MW thermal release. Heavy smoke plume pushing south-southeast toward residential zones.",
+        "facility_id": "fac-mrpl-01",
+        "facility_name": "MRPL Petrochemical Complex",
+        "facility_type": "Petrochemical Refining",
+        "lulc_class": "industrial_developed",
+        "lulc_entropy_500m": 1.84,
+        "is_in_industrial_polygon": true,
+        "is_mine_polygon": false,
+        "distance_to_industrial_m": 0,
+        "persistence_score": 0.91,
+        "baseline_frp_mean": 38.4,
+        "baseline_frp_std": 7.2,
+        "sensor_agreement_state": "agreement",
+        "sensor_count": 2,
+        "data_quality_flag": "NOMINAL",
+        "data_quality_score": 0.95,
+        "frp_z_score": 34.94,
+        "facility_frp_zscore": 34.94,
+        "cluster_pixel_count": 6,
+        "centroid_drift_velocity_mph": 310.0,
+        "frp_trend_mw_per_hour": 440.0,
+        "stub_class_probabilities": {
+          "1": 0.95,
+          "2": 0.03,
+          "3": 0.01,
+          "4": 0.0,
+          "5": 0.01
+        },
+        "stub_anomaly_score": 0.98,
+        "recommended_action": "CRITICAL EMERGENCY: Issue regional downwind shelter/evacuation advisory. Dispatch industrial firefighting units.",
+        "swir_nir_ratio": 2.15,
+        "delta_nbr": 0.68,
+        "delta_ndvi": -0.52,
+        "plume_wind_speed_mps": 8.2,
+        "plume_wind_direction_deg": 142,
+        "segmentation": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                12.976,
+                74.836
+              ],
+              [
+                12.9825,
+                74.838
+              ],
+              [
+                12.982,
+                74.8465
+              ],
+              [
+                12.975,
+                74.8445
+              ],
+              [
+                12.976,
+                74.836
+              ]
+            ]
+          ],
+          "burnAreaM2": 78200,
+          "smokeAreaM2": 245000
+        },
+        "affected_assets": [
+          {
+            "id": "ast-01",
+            "name": "Crude Oil Storage Tank Farm 4",
+            "type": "tank_farm",
+            "latitude": 12.979,
+            "longitude": 74.842,
+            "distance_m": 50,
+            "criticality_weight": 1.0
+          },
+          {
+            "id": "ast-03",
+            "name": "Baikampady Residential Sector",
+            "type": "settlement",
+            "latitude": 12.969,
+            "longitude": 74.845,
+            "distance_m": 950,
+            "population_at_risk": 14500,
+            "criticality_weight": 0.95
+          },
+          {
+            "id": "ast-02",
+            "name": "National Highway 66 Corridor",
+            "type": "pipeline",
+            "latitude": 12.974,
+            "longitude": 74.831,
+            "distance_m": 620,
+            "criticality_weight": 0.75
+          }
+        ],
+        "historical_baseline_timeline": [
+          {
+            "day": "Day -80",
+            "mean": 37.8,
+            "upper1Sigma": 45.0,
+            "upper3Sigma": 59.4,
+            "observedFRP": 36.2
+          },
+          {
+            "day": "Day -60",
+            "mean": 38.1,
+            "upper1Sigma": 45.3,
+            "upper3Sigma": 59.7,
+            "observedFRP": 40.1
+          },
+          {
+            "day": "Day -40",
+            "mean": 38.3,
+            "upper1Sigma": 45.5,
+            "upper3Sigma": 59.9,
+            "observedFRP": 39.5
+          },
+          {
+            "day": "Day -20",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 37.8
+          },
+          {
+            "day": "Current",
+            "mean": 38.4,
+            "upper1Sigma": 45.6,
+            "upper3Sigma": 60.0,
+            "observedFRP": 290.0
+          }
+        ]
+      }
+    }
+  ],
+  "facility": {
+    "id": "fac-mrpl-01",
+    "name": "MRPL Petrochemical Complex",
+    "type": "Petrochemical Refining & Storage",
+    "coordinates": [
+      12.978,
+      74.838
+    ],
+    "polygon": [
+      [
+        12.986,
+        74.83
+      ],
+      [
+        12.986,
+        74.848
+      ],
+      [
+        12.97,
+        74.848
+      ],
+      [
+        12.97,
+        74.83
+      ],
+      [
+        12.986,
+        74.83
+      ]
+    ],
+    "baselineFRPMean": 38.4,
+    "baselineFRPStd": 7.2,
+    "expectedPersistence": 0.92,
+    "typicalHotspots": 1,
+    "nearbySettlements": [
+      "Kulai Settlement",
+      "Baikampady Township",
+      "Hosabettu"
+    ],
+    "nearbyAssets": [
+      {
+        "id": "ast-01",
+        "name": "Crude Oil Storage Tank Farm 4",
+        "type": "tank_farm",
+        "latitude": 12.979,
+        "longitude": 74.842,
+        "distance_m": 420,
+        "criticality_weight": 0.95
+      },
+      {
+        "id": "ast-02",
+        "name": "National Highway 66 Corridor",
+        "type": "pipeline",
+        "latitude": 12.974,
+        "longitude": 74.831,
+        "distance_m": 850,
+        "criticality_weight": 0.7
+      },
+      {
+        "id": "ast-03",
+        "name": "Baikampady Residential Sector",
+        "type": "settlement",
+        "latitude": 12.969,
+        "longitude": 74.845,
+        "distance_m": 1250,
+        "population_at_risk": 14500,
+        "criticality_weight": 0.9
+      }
+    ]
+  }
+}

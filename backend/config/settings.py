@@ -11,7 +11,24 @@ class VersionsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     model_version: str = Field(min_length=1)
+    anomaly_model_version: str = Field(default="iforest-stub-0.1.0", min_length=1)
     policy_version: str = Field(min_length=1)
+
+
+class BaselineConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    coordinate_window_days: int = Field(default=90, ge=1)
+    minimum_history_points: int = Field(default=10, ge=1)
+    epsilon: float = Field(default=1e-6, gt=0)
+
+
+class FusionConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    spatial_margin_m: float = Field(default=250.0, ge=0)
+    polar_temporal_window_minutes: float = Field(default=30.0, gt=0)
+    geostationary_window_minutes: float = Field(default=45.0, gt=0)
 
 
 class ArbitrationConfig(BaseModel):
@@ -21,6 +38,7 @@ class ArbitrationConfig(BaseModel):
     class2_threshold: float = Field(ge=0, le=1)
     facility_z_threshold: float = Field(ge=0)
     anomaly_threshold: float = Field(ge=0, le=1)
+    min_quality: float = Field(default=0.45, ge=0, le=1)
     min_model_confidence: float = Field(ge=0, le=1)
 
 
@@ -32,6 +50,9 @@ class RiskConfig(BaseModel):
     spread_weight: float = Field(ge=0, le=1)
     exposure_weight: float = Field(ge=0, le=1)
     exposure_default: float = Field(default=0.0, ge=0, le=1)
+    class_impact_weights: dict[str, float] = Field(
+        default_factory=lambda: {"1": 1.00, "2": 0.80, "3": 0.55, "4": 0.20, "5": 0.05}
+    )
 
     @model_validator(mode="after")
     def weights_sum_to_one(self) -> "RiskConfig":
@@ -46,12 +67,23 @@ class RiskConfig(BaseModel):
         return self
 
 
+class PlumeConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    monte_carlo_samples: int = Field(default=250, ge=1)
+    speed_sigma_mps: float = Field(default=1.5, ge=0)
+    direction_sigma_deg: float = Field(default=12.0, ge=0)
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     versions: VersionsConfig
     arbitration: ArbitrationConfig
     risk: RiskConfig
+    baseline: BaselineConfig = Field(default_factory=BaselineConfig)
+    fusion: FusionConfig = Field(default_factory=FusionConfig)
+    plume: PlumeConfig = Field(default_factory=PlumeConfig)
 
 
 CONFIG_PATH = Path(__file__).with_name("thresholds.yaml")

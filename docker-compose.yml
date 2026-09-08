@@ -1,0 +1,17 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: jvalyx-backend:0.1.0
+    ports:
+      - "8000:8000"
+    environment:
+      # ~2 scenario-minutes of observation time per real second of playback.
+      JVALYX_REPLAY_COMPRESSION: "120"
+      JVALYX_REPLAY_MAX_GAP_SECONDS: "6"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5

@@ -32,6 +32,7 @@ class ReplayScenario(BaseModel):
     source_provenance: str = Field(min_length=1)
     classification_note: str = Field(min_length=1)
     baseline: dict[str, float] = Field(default_factory=dict)
+    facility: dict[str, Any] | None = None
     frames: list[ReplayFrame] = Field(min_length=1)
 
     @model_validator(mode="after")

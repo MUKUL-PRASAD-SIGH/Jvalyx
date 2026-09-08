@@ -1,0 +1,235 @@
+{
+  "schema_version": "replay-1.0.0",
+  "scenario_id": "wildfire",
+  "title": "Similipal Biosphere \u2014 Forest Fire Perimeter",
+  "description": "High drift velocity across dense tree-cover canopy (Class 2 wildfire).",
+  "mode": "HISTORICAL REPLAY",
+  "source_provenance": "Curated from historical NASA FIRMS detections over the Similipal biosphere reserve.",
+  "classification_note": "Wildfire reference scenario. Stub inference stands in for trained models.",
+  "baseline": {
+    "facility_mean": 4.2,
+    "facility_std": 2.1,
+    "coordinate_mean": 4.2,
+    "coordinate_std": 2.1
+  },
+  "frames": [
+    {
+      "frame_id": "wildfire:0",
+      "elapsed_seconds": 0.0,
+      "checkpoint": "critical_state",
+      "detections": [
+        {
+          "detection_id": "det-v-wld1",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T13:38:10Z",
+          "latitude": 21.852,
+          "longitude": 86.342,
+          "frp_mw": 110.0,
+          "bright_ti4_k": 362.0,
+          "bright_ti5_k": 299.5,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.94,
+            "sun_glint_flag": false
+          }
+        },
+        {
+          "detection_id": "det-v-wld2",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T13:38:10Z",
+          "latitude": 21.8545,
+          "longitude": 86.348,
+          "frp_mw": 95.0,
+          "bright_ti4_k": 358.0,
+          "bright_ti5_k": 298.0,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.94,
+            "sun_glint_flag": false
+          }
+        }
+      ],
+      "context": {
+        "label": "T+00m: Forest Fire Rapid Spread",
+        "description": "Multi-pixel cluster spreading eastward with 1,250 m/h drift velocity over dense canopy.",
+        "facility_id": null,
+        "facility_name": "Similipal Biosphere Reserve",
+        "facility_type": "Deciduous Forest Canopy",
+        "lulc_class": "tree_cover",
+        "lulc_entropy_500m": 0.32,
+        "is_in_industrial_polygon": false,
+        "is_mine_polygon": false,
+        "distance_to_industrial_m": 35000,
+        "persistence_score": 0.03,
+        "baseline_frp_mean": 4.2,
+        "baseline_frp_std": 2.1,
+        "sensor_agreement_state": "agreement",
+        "sensor_count": 2,
+        "data_quality_flag": "NOMINAL",
+        "data_quality_score": 0.94,
+        "frp_z_score": 22.4,
+        "facility_frp_zscore": 0.0,
+        "cluster_pixel_count": 12,
+        "centroid_drift_velocity_mph": 1250.0,
+        "frp_trend_mw_per_hour": 180.0,
+        "stub_class_probabilities": {
+          "1": 0.04,
+          "2": 0.89,
+          "3": 0.02,
+          "4": 0.04,
+          "5": 0.01
+        },
+        "stub_anomaly_score": 0.91,
+        "recommended_action": "Dispatch state forestry wildfire rapid-response teams. Issue perimeter containment orders.",
+        "swir_nir_ratio": 1.85,
+        "delta_nbr": 0.74,
+        "delta_ndvi": -0.62,
+        "plume_wind_speed_mps": 9.4,
+        "plume_wind_direction_deg": 75,
+        "segmentation": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                21.848,
+                86.335
+              ],
+              [
+                21.858,
+                86.339
+              ],
+              [
+                21.856,
+                86.355
+              ],
+              [
+                21.846,
+                86.35
+              ],
+              [
+                21.848,
+                86.335
+              ]
+            ]
+          ],
+          "burnAreaM2": 320000,
+          "smokeAreaM2": 890000
+        },
+        "affected_assets": [
+          {
+            "id": "ast-for-01",
+            "name": "Similipal Core Reserve Boundary",
+            "type": "substation",
+            "latitude": 21.845,
+            "longitude": 86.352,
+            "distance_m": 600,
+            "criticality_weight": 0.85
+          },
+          {
+            "id": "ast-for-02",
+            "name": "Udala Tribal Settlement",
+            "type": "settlement",
+            "latitude": 21.838,
+            "longitude": 86.368,
+            "distance_m": 2400,
+            "population_at_risk": 3200,
+            "criticality_weight": 0.7
+          }
+        ],
+        "historical_baseline_timeline": [
+          {
+            "day": "Day -80",
+            "mean": 3.6,
+            "upper1Sigma": 5.7,
+            "upper3Sigma": 9.9,
+            "observedFRP": 2.0
+          },
+          {
+            "day": "Day -60",
+            "mean": 3.9,
+            "upper1Sigma": 6.0,
+            "upper3Sigma": 10.2,
+            "observedFRP": 5.9
+          },
+          {
+            "day": "Day -40",
+            "mean": 4.1,
+            "upper1Sigma": 6.2,
+            "upper3Sigma": 10.4,
+            "observedFRP": 5.3
+          },
+          {
+            "day": "Day -20",
+            "mean": 4.2,
+            "upper1Sigma": 6.3,
+            "upper3Sigma": 10.5,
+            "observedFRP": 3.6
+          },
+          {
+            "day": "Current",
+            "mean": 4.2,
+            "upper1Sigma": 6.3,
+            "upper3Sigma": 10.5,
+            "observedFRP": 205.0
+          }
+        ]
+      }
+    }
+  ],
+  "facility": {
+    "id": "fac-sim-01",
+    "name": "Similipal Biosphere Forest Sector",
+    "type": "National Protected Biosphere",
+    "coordinates": [
+      21.85,
+      86.34
+    ],
+    "polygon": [
+      [
+        21.87,
+        86.32
+      ],
+      [
+        21.87,
+        86.365
+      ],
+      [
+        21.83,
+        86.365
+      ],
+      [
+        21.83,
+        86.32
+      ],
+      [
+        21.87,
+        86.32
+      ]
+    ],
+    "baselineFRPMean": 4.2,
+    "baselineFRPStd": 2.1,
+    "expectedPersistence": 0.04,
+    "typicalHotspots": 0,
+    "nearbySettlements": [
+      "Baripada Outskirts",
+      "Udala Tribal Hamlet"
+    ],
+    "nearbyAssets": [
+      {
+        "id": "ast-for-01",
+        "name": "Similipal Core Reserve Boundary",
+        "type": "substation",
+        "latitude": 21.845,
+        "longitude": 86.352,
+        "distance_m": 600,
+        "criticality_weight": 0.85
+      }
+    ]
+  }
+}
