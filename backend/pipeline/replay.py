@@ -23,14 +23,32 @@ class ReplayEngine:
 
     ALLOWED_SPEEDS = frozenset({0.5, 1.0, 4.0})
 
-    def __init__(self, sleep: SleepFunction = asyncio.sleep) -> None:
+    def __init__(
+        self,
+        sleep: SleepFunction = asyncio.sleep,
+        *,
+        time_compression: float = 1.0,
+        max_frame_gap_seconds: float | None = None,
+    ) -> None:
+        """``time_compression`` collapses observation time into playback time
+        (e.g. 120.0 replays two scenario-minutes per real second). ``max_frame_gap_seconds``
+        caps any single inter-frame wait so a large observation gap can't stall the demo.
+        """
         self._sleep = sleep
+        self._time_compression = max(time_compression, 1e-6)
+        self._max_frame_gap = max_frame_gap_seconds
         self._scenario: ReplayScenario | None = None
         self._frame_index = 0
         self._speed = 1.0
         self._status = ReplayStatus.IDLE
         self._resume_event = asyncio.Event()
         self._resume_event.set()
+
+    def _frame_gap_seconds(self, current_elapsed: float, previous_elapsed: float) -> float:
+        raw = (current_elapsed - previous_elapsed) / (self._speed * self._time_compression)
+        if self._max_frame_gap is not None:
+            return min(raw, self._max_frame_gap)
+        return raw
 
     @property
     def status(self) -> ReplayStatus:
@@ -88,7 +106,9 @@ class ReplayEngine:
             frame = scenario.frames[self._frame_index]
             if self._frame_index > 0:
                 previous_frame = scenario.frames[self._frame_index - 1]
-                await self._sleep((frame.elapsed_seconds - previous_frame.elapsed_seconds) / self._speed)
+                await self._sleep(
+                    self._frame_gap_seconds(frame.elapsed_seconds, previous_frame.elapsed_seconds)
+                )
                 await self._resume_event.wait()
             await publish(frame)
             self._frame_index += 1

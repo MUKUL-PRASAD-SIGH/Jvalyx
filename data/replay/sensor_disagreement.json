@@ -1,0 +1,162 @@
+{
+  "schema_version": "replay-1.0.0",
+  "scenario_id": "sensor_disagreement",
+  "title": "Korba Industrial Belt \u2014 Sensor Disagreement",
+  "description": "Cloud-edge obstruction triggering verification routing instead of suppression.",
+  "mode": "HISTORICAL REPLAY",
+  "source_provenance": "Curated from historical NASA FIRMS detections over the Korba super thermal power complex.",
+  "classification_note": "Disagreement reference scenario. Stub inference stands in for trained models.",
+  "baseline": {
+    "facility_mean": 22.0,
+    "facility_std": 5.5,
+    "coordinate_mean": 22.0,
+    "coordinate_std": 5.5
+  },
+  "frames": [
+    {
+      "frame_id": "sensor_disagreement:0",
+      "elapsed_seconds": 0.0,
+      "checkpoint": "uncertain_state",
+      "detections": [
+        {
+          "detection_id": "det-viirs-cld",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T16:08:20Z",
+          "latitude": 22.3552,
+          "longitude": 82.7204,
+          "frp_mw": 68.4,
+          "bright_ti4_k": 338.0,
+          "bright_ti5_k": 288.0,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "low",
+          "cloud_flag": true,
+          "raw_quality": {
+            "quality_score": 0.45,
+            "sun_glint_flag": false
+          }
+        }
+      ],
+      "context": {
+        "label": "T+00m: Conflicted Multi-Sensor Observation",
+        "description": "VIIRS flags a 68 MW anomaly under cloud obstruction. MODIS does not detect an anomaly. Safety rule routes to UNCERTAIN.",
+        "facility_id": "fac-korba-01",
+        "facility_name": "Korba Super Thermal Power",
+        "facility_type": "Thermal Power Complex",
+        "lulc_class": "industrial_developed",
+        "lulc_entropy_500m": 1.62,
+        "is_in_industrial_polygon": true,
+        "is_mine_polygon": false,
+        "distance_to_industrial_m": 0,
+        "persistence_score": 0.62,
+        "baseline_frp_mean": 22.0,
+        "baseline_frp_std": 5.5,
+        "sensor_agreement_state": "disagreement",
+        "sensor_count": 1,
+        "data_quality_flag": "CLOUD_OBSTRUCTED",
+        "data_quality_score": 0.45,
+        "frp_z_score": 4.43,
+        "facility_frp_zscore": 4.43,
+        "cluster_pixel_count": 1,
+        "centroid_drift_velocity_mph": 0.0,
+        "frp_trend_mw_per_hour": 4.5,
+        "stub_class_probabilities": {
+          "1": 0.42,
+          "2": 0.08,
+          "3": 0.18,
+          "4": 0.02,
+          "5": 0.3
+        },
+        "stub_anomaly_score": 0.76,
+        "recommended_action": "OPERATOR VERIFICATION REQUIRED: inspect optical cloud overlay or task the next satellite overpass.",
+        "historical_baseline_timeline": [
+          {
+            "day": "Day -80",
+            "mean": 21.4,
+            "upper1Sigma": 26.9,
+            "upper3Sigma": 37.9,
+            "observedFRP": 19.8
+          },
+          {
+            "day": "Day -60",
+            "mean": 21.7,
+            "upper1Sigma": 27.2,
+            "upper3Sigma": 38.2,
+            "observedFRP": 23.7
+          },
+          {
+            "day": "Day -40",
+            "mean": 21.9,
+            "upper1Sigma": 27.4,
+            "upper3Sigma": 38.4,
+            "observedFRP": 23.1
+          },
+          {
+            "day": "Day -20",
+            "mean": 22.0,
+            "upper1Sigma": 27.5,
+            "upper3Sigma": 38.5,
+            "observedFRP": 21.4
+          },
+          {
+            "day": "Current",
+            "mean": 22.0,
+            "upper1Sigma": 27.5,
+            "upper3Sigma": 38.5,
+            "observedFRP": 68.4
+          }
+        ]
+      }
+    }
+  ],
+  "facility": {
+    "id": "fac-korba-01",
+    "name": "Korba Super Thermal Power & Coal Yard",
+    "type": "Thermal Power & Coal Storage",
+    "coordinates": [
+      22.355,
+      82.72
+    ],
+    "polygon": [
+      [
+        22.368,
+        82.705
+      ],
+      [
+        22.368,
+        82.735
+      ],
+      [
+        22.342,
+        82.735
+      ],
+      [
+        22.342,
+        82.705
+      ],
+      [
+        22.368,
+        82.705
+      ]
+    ],
+    "baselineFRPMean": 22.0,
+    "baselineFRPStd": 5.5,
+    "expectedPersistence": 0.65,
+    "typicalHotspots": 1,
+    "nearbySettlements": [
+      "Korba East Colony",
+      "Gevra Township"
+    ],
+    "nearbyAssets": [
+      {
+        "id": "ast-kor-01",
+        "name": "Coal Washery Conveyor Belt 2",
+        "type": "substation",
+        "latitude": 22.358,
+        "longitude": 82.724,
+        "distance_m": 350,
+        "criticality_weight": 0.8
+      }
+    ]
+  }
+}

@@ -1,9 +1,9 @@
+
 # Jvalyx
+
 ## Comprehensive Technical Build Plan, Demonstration Playbook, and Differentiation Strategy
 
-**Project:** Space-based industrial fire classification and consequence intelligence  
-**Primary objective:** Convert raw satellite thermal anomalies into an explainable, confidence-aware, interactive hazard intelligence product.  
-**Recommended MVP:** A replayable multi-sensor event simulator backed by real historical/open data, with a live-style dashboard and an operator-in-the-loop escalation workflow.
+**Project:** Space-based industrial fire classification and consequence intelligence**Primary objective:** Convert raw satellite thermal anomalies into an explainable, confidence-aware, interactive hazard intelligence product.**Recommended MVP:** A replayable multi-sensor event simulator backed by real historical/open data, with a live-style dashboard and an operator-in-the-loop escalation workflow.
 
 > **Important scope decision:** Build a credible, deterministic MVP first. Do not make the live system depend on every satellite/API/model being available during judging. The demo must work offline from a curated event pack, while live feeds remain a production extension.
 
@@ -15,13 +15,13 @@ Satellite fire feeds answer **“where is heat?”** Jvalyx answers **“what is
 
 The system classifies a fused event into five categories:
 
-| Class | Meaning | Suggested route |
-|---|---|---|
-| 1 | Accidental industrial fire or explosion | Critical; immediate tactical analysis |
-| 2 | Wildfire or uncontrolled forest fire | High; immediate spread/consequence analysis |
-| 3 | Uncontrolled mining or coal-seam fire | Moderate; monitor and investigate |
-| 4 | Agricultural or stubble burning | Low/compliance; track pattern |
-| 5 | Persistent flare or routine industrial source | Routine; baseline/exception monitoring |
+| Class | Meaning                                       | Suggested route                             |
+| ----- | --------------------------------------------- | ------------------------------------------- |
+| 1     | Accidental industrial fire or explosion       | Critical; immediate tactical analysis       |
+| 2     | Wildfire or uncontrolled forest fire          | High; immediate spread/consequence analysis |
+| 3     | Uncontrolled mining or coal-seam fire         | Moderate; monitor and investigate           |
+| 4     | Agricultural or stubble burning               | Low/compliance; track pattern               |
+| 5     | Persistent flare or routine industrial source | Routine; baseline/exception monitoring      |
 
 The architectural distinction is a **confidence-aware arbitration layer**. CatBoost, an anomaly detector, sensor agreement, facility baseline behavior, and data-quality metadata jointly determine whether an event is `NORMAL`, `UNCERTAIN`, or `CRITICAL`. A model prediction alone never silently suppresses a potentially dangerous event.
 
@@ -139,19 +139,19 @@ Each card includes a small “why it matters” sentence. This turns explainabil
 
 ### 3.1 Recommended implementation stack
 
-| Layer | MVP choice | Reason |
-|---|---|---|
-| Data ingestion | Python, Pandas, Pydantic | Fast development and schema validation |
-| Geospatial processing | GeoPandas, Shapely, Rasterio | Familiar, demonstrable spatial operations |
-| Storage | SQLite for demo; PostgreSQL/PostGIS for deployment | Avoid infrastructure overhead during judging |
-| ML | CatBoost + scikit-learn Isolation Forest | Strong tabular baseline and independent anomaly path |
-| Segmentation | Lightweight U-Net or precomputed mask; SegFormer for extended version | Reliable demo with manageable compute |
-| API | FastAPI | Typed endpoints and easy WebSocket support |
-| Realtime | WebSocket | Pushes event-state changes to the dashboard |
-| Frontend | React + MapLibre GL JS or Leaflet | Interactive map and animated event layers |
-| Charts | Recharts/ECharts | Timeline, class distribution, confidence, FRP trend |
-| Deployment | Docker Compose; optional Vercel frontend | Reproducible local demo |
-| Model artifacts | `joblib`/CatBoost native format | Simple loading and versioning |
+| Layer                 | MVP choice                                                            | Reason                                               |
+| --------------------- | --------------------------------------------------------------------- | ---------------------------------------------------- |
+| Data ingestion        | Python, Pandas, Pydantic                                              | Fast development and schema validation               |
+| Geospatial processing | GeoPandas, Shapely, Rasterio                                          | Familiar, demonstrable spatial operations            |
+| Storage               | SQLite for demo; PostgreSQL/PostGIS for deployment                    | Avoid infrastructure overhead during judging         |
+| ML                    | CatBoost + scikit-learn Isolation Forest                              | Strong tabular baseline and independent anomaly path |
+| Segmentation          | Lightweight U-Net or precomputed mask; SegFormer for extended version | Reliable demo with manageable compute                |
+| API                   | FastAPI                                                               | Typed endpoints and easy WebSocket support           |
+| Realtime              | WebSocket                                                             | Pushes event-state changes to the dashboard          |
+| Frontend              | React + MapLibre GL JS or Leaflet                                     | Interactive map and animated event layers            |
+| Charts                | Recharts/ECharts                                                      | Timeline, class distribution, confidence, FRP trend  |
+| Deployment            | Docker Compose; optional Vercel frontend                              | Reproducible local demo                              |
+| Model artifacts       | `joblib`/CatBoost native format                                     | Simple loading and versioning                        |
 
 ### 3.2 Keep the architecture simple
 
@@ -270,11 +270,11 @@ class FusedEvent(BaseModel):
 
 Implement three modes:
 
-| Mode | Purpose | Required for judging |
-|---|---|---|
-| `replay` | Deterministic event timeline from local JSON/CSV | Yes |
-| `synthetic` | Generate controlled what-if transitions | Yes |
-| `live` | Poll available external feeds | Optional extension |
+| Mode          | Purpose                                          | Required for judging |
+| ------------- | ------------------------------------------------ | -------------------- |
+| `replay`    | Deterministic event timeline from local JSON/CSV | Yes                  |
+| `synthetic` | Generate controlled what-if transitions          | Yes                  |
+| `live`      | Poll available external feeds                    | Optional extension   |
 
 The replay pack should contain at least four scenarios:
 
@@ -389,14 +389,14 @@ def fusion_state(detections: list[dict]) -> str:
 
 ### 7.1 Feature groups
 
-| Group | Features | Computation |
-|---|---|---|
-| Radiometric | `bright_ti4`, `bright_ti5`, `temp_ratio`, `frp`, `scan`, `track`, `daynight` | Sensor record |
-| Spatial | industrial membership, distance, facility type, LULC, entropy | GeoPandas/PostGIS |
-| Temporal | persistence, baseline mean/std, z-score, drift, cluster count | Event store |
-| Facility | facility FRP mean/std/z-score, active hotspot count | Facility aggregation |
-| Fusion | sensor count, agreement state, quality flag | Fusion layer |
-| Tactical | SWIR/NIR, delta NBR, delta NDVI, plume spread | On-demand imagery or precomputed demo mask |
+| Group       | Features                                                                                   | Computation                                |
+| ----------- | ------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| Radiometric | `bright_ti4`, `bright_ti5`, `temp_ratio`, `frp`, `scan`, `track`, `daynight` | Sensor record                              |
+| Spatial     | industrial membership, distance, facility type, LULC, entropy                              | GeoPandas/PostGIS                          |
+| Temporal    | persistence, baseline mean/std, z-score, drift, cluster count                              | Event store                                |
+| Facility    | facility FRP mean/std/z-score, active hotspot count                                        | Facility aggregation                       |
+| Fusion      | sensor count, agreement state, quality flag                                                | Fusion layer                               |
+| Tactical    | SWIR/NIR, delta NBR, delta NDVI, plume spread                                              | On-demand imagery or precomputed demo mask |
 
 ### 7.2 Derived feature snippets
 
@@ -551,7 +551,6 @@ The numeric thresholds are demo starting points, not validated operational thres
 
 Use a transparent weighted score for visualization:
 
-
 a simple MVP formulation is
 
 \[
@@ -575,11 +574,11 @@ Show the component bars beside the total score.
 
 For a functional demo, use one of these approaches:
 
-| Approach | Use when |
-|---|---|
-| Precomputed masks | You need maximum demo reliability |
-| Lightweight U-Net | You have a small labeled set and local GPU/CPU inference |
-| SegFormer MiT-B0 | You want a stronger technical model and have time to tune |
+| Approach          | Use when                                                  |
+| ----------------- | --------------------------------------------------------- |
+| Precomputed masks | You need maximum demo reliability                         |
+| Lightweight U-Net | You have a small labeled set and local GPU/CPU inference  |
+| SegFormer MiT-B0  | You want a stronger technical model and have time to tune |
 
 The mask should distinguish at least:
 
@@ -703,18 +702,18 @@ The judge should be able to:
 
 ### 12.1 REST endpoints
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/health` | GET | Health check |
-| `/scenarios` | GET | Available replay scenarios |
-| `/scenarios/{id}/start` | POST | Start replay |
-| `/scenarios/{id}/reset` | POST | Reset replay |
-| `/events` | GET | List current events |
-| `/events/{id}` | GET | Full event intelligence |
-| `/events/{id}/verify` | POST | Confirm/reject uncertain event |
-| `/events/{id}/simulate` | POST | Apply demo counterfactual |
-| `/config` | GET | Thresholds and version metadata |
-| `/ws/events` | WebSocket | Live event updates |
+| Endpoint                  | Method    | Purpose                         |
+| ------------------------- | --------- | ------------------------------- |
+| `/health`               | GET       | Health check                    |
+| `/scenarios`            | GET       | Available replay scenarios      |
+| `/scenarios/{id}/start` | POST      | Start replay                    |
+| `/scenarios/{id}/reset` | POST      | Reset replay                    |
+| `/events`               | GET       | List current events             |
+| `/events/{id}`          | GET       | Full event intelligence         |
+| `/events/{id}/verify`   | POST      | Confirm/reject uncertain event  |
+| `/events/{id}/simulate` | POST      | Apply demo counterfactual       |
+| `/config`               | GET       | Thresholds and version metadata |
+| `/ws/events`            | WebSocket | Live event updates              |
 
 ### 12.2 WebSocket message
 
@@ -902,13 +901,13 @@ Tag a known-good demo commit before presentation.
 
 ## 15. Team Work Allocation
 
-| Role | Ownership | Definition of done |
-|---|---|---|
-| Data/EO engineer | Replay data, enrichment, baselines | Four scenarios and feature tables are reproducible |
-| ML engineer | CatBoost, anomaly model, explainability | Inference endpoint returns stable probabilities and reasons |
-| Backend engineer | APIs, storage, WebSocket, arbitration | State transitions are testable through API |
-| Frontend/geospatial engineer | Map, charts, layers, interaction | Judge can inspect and manipulate event state |
-| Integration/demo lead | Scenario script, testing, visual polish | Demo runs offline from a clean checkout |
+| Role                         | Ownership                               | Definition of done                                          |
+| ---------------------------- | --------------------------------------- | ----------------------------------------------------------- |
+| Data/EO engineer             | Replay data, enrichment, baselines      | Four scenarios and feature tables are reproducible          |
+| ML engineer                  | CatBoost, anomaly model, explainability | Inference endpoint returns stable probabilities and reasons |
+| Backend engineer             | APIs, storage, WebSocket, arbitration   | State transitions are testable through API                  |
+| Frontend/geospatial engineer | Map, charts, layers, interaction        | Judge can inspect and manipulate event state                |
+| Integration/demo lead        | Scenario script, testing, visual polish | Demo runs offline from a clean checkout                     |
 
 If the team is small, combine data/ML and backend/frontend, but preserve an explicit demo owner.
 
@@ -1068,18 +1067,18 @@ This increases credibility rather than weakening the pitch.
 
 ## 19. Common Failure Modes and Mitigations
 
-| Failure | Likely cause | Mitigation |
-|---|---|---|
-| Dashboard is empty | API/live feed unavailable | Always ship offline replay mode |
-| Every event becomes Class 5 | Class imbalance or weak labels | Balanced training, anomaly path, curated scenarios |
-| Critical alert never triggers | Threshold too strict | Golden scenario tests and explicit industrial override |
-| Sensor disagreement suppresses event | Boolean fusion design | Route disagreement to `UNCERTAIN` |
-| Demo looks like a generic map | No event narrative | Add baseline chart, timeline, evidence cards, counterfactual control |
-| Model cannot explain output | Only class label stored | Store probabilities, features, SHAP reasons, policy version |
-| Plume looks scientifically overconfident | One deterministic line | Render uncertainty corridor and label assumptions |
-| Model metrics look unrealistically high | Spatial leakage/circular labels | Spatial/temporal splits and human-verified holdout |
-| API latency breaks presentation | On-demand external imagery | Pre-cache demo imagery and masks |
-| Team cannot reset the system | Manual state changes | One-click scenario reset and database seed script |
+| Failure                                  | Likely cause                    | Mitigation                                                           |
+| ---------------------------------------- | ------------------------------- | -------------------------------------------------------------------- |
+| Dashboard is empty                       | API/live feed unavailable       | Always ship offline replay mode                                      |
+| Every event becomes Class 5              | Class imbalance or weak labels  | Balanced training, anomaly path, curated scenarios                   |
+| Critical alert never triggers            | Threshold too strict            | Golden scenario tests and explicit industrial override               |
+| Sensor disagreement suppresses event     | Boolean fusion design           | Route disagreement to`UNCERTAIN`                                   |
+| Demo looks like a generic map            | No event narrative              | Add baseline chart, timeline, evidence cards, counterfactual control |
+| Model cannot explain output              | Only class label stored         | Store probabilities, features, SHAP reasons, policy version          |
+| Plume looks scientifically overconfident | One deterministic line          | Render uncertainty corridor and label assumptions                    |
+| Model metrics look unrealistically high  | Spatial leakage/circular labels | Spatial/temporal splits and human-verified holdout                   |
+| API latency breaks presentation          | On-demand external imagery      | Pre-cache demo imagery and masks                                     |
+| Team cannot reset the system             | Manual state changes            | One-click scenario reset and database seed script                    |
 
 ---
 

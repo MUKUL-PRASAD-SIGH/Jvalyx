@@ -1,0 +1,162 @@
+{
+  "schema_version": "replay-1.0.0",
+  "scenario_id": "persistent_flare",
+  "title": "Jamnagar Refinery \u2014 Routine Gas Flaring",
+  "description": "High-persistence thermal baseline with zero abnormal growth (Class 5 routine).",
+  "mode": "HISTORICAL REPLAY",
+  "source_provenance": "Curated from historical NASA FIRMS detections over the Jamnagar refining hub.",
+  "classification_note": "Routine flare reference scenario. Stub inference stands in for trained models.",
+  "baseline": {
+    "facility_mean": 48.0,
+    "facility_std": 9.5,
+    "coordinate_mean": 48.0,
+    "coordinate_std": 9.5
+  },
+  "frames": [
+    {
+      "frame_id": "persistent_flare:0",
+      "elapsed_seconds": 0.0,
+      "checkpoint": "baseline",
+      "detections": [
+        {
+          "detection_id": "det-viirs-flr",
+          "sensor": "VIIRS",
+          "timestamp": "2026-09-05T07:58:30Z",
+          "latitude": 22.3781,
+          "longitude": 69.8652,
+          "frp_mw": 46.5,
+          "bright_ti4_k": 348.0,
+          "bright_ti5_k": 298.0,
+          "scan_km": 0.38,
+          "track_km": 0.38,
+          "confidence": "high",
+          "cloud_flag": false,
+          "raw_quality": {
+            "quality_score": 0.98,
+            "sun_glint_flag": false
+          }
+        }
+      ],
+      "context": {
+        "label": "T+00m: Routine Overpass Observation",
+        "description": "Consistent thermal hotspot at elevated flare stack. Low variance, zero perimeter expansion.",
+        "facility_id": "fac-ril-01",
+        "facility_name": "Jamnagar Refining Hub",
+        "facility_type": "Petrochemical Complex",
+        "lulc_class": "industrial_developed",
+        "lulc_entropy_500m": 1.45,
+        "is_in_industrial_polygon": true,
+        "is_mine_polygon": false,
+        "distance_to_industrial_m": 0,
+        "persistence_score": 0.95,
+        "baseline_frp_mean": 48.0,
+        "baseline_frp_std": 9.5,
+        "sensor_agreement_state": "single_sensor",
+        "sensor_count": 1,
+        "data_quality_flag": "NOMINAL",
+        "data_quality_score": 0.98,
+        "frp_z_score": -0.16,
+        "facility_frp_zscore": -0.16,
+        "cluster_pixel_count": 1,
+        "centroid_drift_velocity_mph": 0.0,
+        "frp_trend_mw_per_hour": 0.2,
+        "stub_class_probabilities": {
+          "1": 0.02,
+          "2": 0.01,
+          "3": 0.01,
+          "4": 0.01,
+          "5": 0.95
+        },
+        "stub_anomaly_score": 0.08,
+        "recommended_action": "Routine tracking. No tactical dispatch required.",
+        "historical_baseline_timeline": [
+          {
+            "day": "Day -80",
+            "mean": 47.4,
+            "upper1Sigma": 56.9,
+            "upper3Sigma": 75.9,
+            "observedFRP": 45.8
+          },
+          {
+            "day": "Day -60",
+            "mean": 47.7,
+            "upper1Sigma": 57.2,
+            "upper3Sigma": 76.2,
+            "observedFRP": 49.7
+          },
+          {
+            "day": "Day -40",
+            "mean": 47.9,
+            "upper1Sigma": 57.4,
+            "upper3Sigma": 76.4,
+            "observedFRP": 49.1
+          },
+          {
+            "day": "Day -20",
+            "mean": 48.0,
+            "upper1Sigma": 57.5,
+            "upper3Sigma": 76.5,
+            "observedFRP": 47.4
+          },
+          {
+            "day": "Current",
+            "mean": 48.0,
+            "upper1Sigma": 57.5,
+            "upper3Sigma": 76.5,
+            "observedFRP": 46.5
+          }
+        ]
+      }
+    }
+  ],
+  "facility": {
+    "id": "fac-ril-01",
+    "name": "Jamnagar Refining Hub",
+    "type": "Mega Petrochemical Complex",
+    "coordinates": [
+      22.378,
+      69.865
+    ],
+    "polygon": [
+      [
+        22.392,
+        69.85
+      ],
+      [
+        22.392,
+        69.88
+      ],
+      [
+        22.365,
+        69.88
+      ],
+      [
+        22.365,
+        69.85
+      ],
+      [
+        22.392,
+        69.85
+      ]
+    ],
+    "baselineFRPMean": 48.0,
+    "baselineFRPStd": 9.5,
+    "expectedPersistence": 0.96,
+    "typicalHotspots": 2,
+    "nearbySettlements": [
+      "Moti Khavdi",
+      "Sikka Port Township"
+    ],
+    "nearbyAssets": [
+      {
+        "id": "ast-ril-01",
+        "name": "Cracker Unit Flare Stack A",
+        "type": "substation",
+        "latitude": 22.378,
+        "longitude": 69.865,
+        "distance_m": 50,
+        "criticality_weight": 0.5
+      }
+    ]
+  }
+}

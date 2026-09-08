@@ -1,12 +1,24 @@
 versions:
   model_version: stub-0.1.0
+  anomaly_model_version: iforest-stub-0.1.0
   policy_version: arbitrator-0.1.0
+
+baseline:
+  coordinate_window_days: 90
+  minimum_history_points: 10
+  epsilon: 1.0e-6
+
+fusion:
+  spatial_margin_m: 250
+  polar_temporal_window_minutes: 30
+  geostationary_window_minutes: 45
 
 arbitration:
   class1_threshold: 0.45
   class2_threshold: 0.55
   facility_z_threshold: 4.0
   anomaly_threshold: 0.75
+  min_quality: 0.45
   min_model_confidence: 0.55
 
 risk:
@@ -15,3 +27,14 @@ risk:
   spread_weight: 0.20
   exposure_weight: 0.20
   exposure_default: 0.0
+  class_impact_weights:
+    "1": 1.00
+    "2": 0.80
+    "3": 0.55
+    "4": 0.20
+    "5": 0.05
+
+plume:
+  monte_carlo_samples: 250
+  speed_sigma_mps: 1.5
+  direction_sigma_deg: 12.0
