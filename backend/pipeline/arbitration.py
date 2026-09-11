@@ -22,6 +22,7 @@ def arbitrate(
     features: dict[str, float],
     fusion_state: SensorAgreementState,
     config: AppConfig,
+    lulc_in_vocabulary: bool = True,
 ) -> RouteState:
     cfg = config.arbitration
     p1 = class_probabilities.get(1, 0.0)
@@ -47,11 +48,16 @@ def arbitrate(
         and not disagreement
     )
     critical = strong_model_critical or industrial_anomaly_critical
+    # The classifier's own class_probabilities are near-meaningless when lulc_class fell
+    # outside the artifact's trained vocabulary (see backend/models/artifacts/README.md
+    # "Measured vocabulary") — a high max_p in that state reflects the model's unknown-
+    # category default, not evidence, so it must not clear the uncertain gate on its own.
     uncertain = (
         disagreement
         or anomaly_score >= cfg.anomaly_threshold
         or quality < cfg.min_quality
         or max_p < cfg.min_model_confidence
+        or not lulc_in_vocabulary
     )
 
     if disagreement:
@@ -112,6 +118,7 @@ def which_rule_fired(
     features: dict[str, float],
     fusion_state: SensorAgreementState,
     config: AppConfig,
+    lulc_in_vocabulary: bool = True,
 ) -> str:
     cfg = config.arbitration
     p1 = class_probabilities.get(1, 0.0)
@@ -141,4 +148,6 @@ def which_rule_fired(
     max_p = max(class_probabilities.values()) if class_probabilities else 0.0
     if max_p < cfg.min_model_confidence:
         return f"UNCERTAIN: top class confidence {max_p:.2f} < {cfg.min_model_confidence}"
+    if not lulc_in_vocabulary:
+        return "UNCERTAIN: lulc_class outside the model's trained vocabulary - class label is not evidence-backed"
     return "NORMAL: no critical or uncertain condition met"

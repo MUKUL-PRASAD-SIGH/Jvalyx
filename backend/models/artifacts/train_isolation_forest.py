@@ -22,6 +22,10 @@ def main():
     if args.csv:
         print(f"Loading data from {args.csv}")
         df = pd.read_csv(args.csv, usecols=numeric_features)
+        # pandas' usecols keeps the CSV's own column order, not this list's order —
+        # reindex explicitly so the fitted model's feature order always matches
+        # `numeric_features` (and the "features" list saved into the artifact below).
+        df = df[numeric_features]
         df = df.dropna()
     else:
         print("No CSV provided, generating simulated data...")

@@ -39,9 +39,11 @@ def _normalize(probs: dict[int, float]) -> dict[int, float]:
 class StubInference:
     """Per-frame outputs, shaped like ``predict_proba`` + ``decision_function``."""
 
-    def infer(self, detections: list[Detection], context: dict[str, Any]) -> dict[str, Any]:
-        """``detections`` is accepted for interface parity; the stub reads only context."""
-        del detections
+    def infer(
+        self, detections: list[Detection], context: dict[str, Any], *, live: bool = False
+    ) -> dict[str, Any]:
+        """``detections``/``live`` are accepted for interface parity; the stub reads only context."""
+        del detections, live
         raw = context.get("stub_class_probabilities") or {5: 1.0}
         probs = _normalize({int(k): float(v) for k, v in raw.items()})
         class_id = max(probs, key=probs.get)
@@ -53,6 +55,9 @@ class StubInference:
             "anomaly_score": max(0.0, min(1.0, anomaly)),
             "model_version": MODEL_VERSION,
             "anomaly_model_version": ANOMALY_MODEL_VERSION,
+            # Scripted demos pin class_probabilities directly via context, so trained-
+            # vocabulary status is moot here - always "in vocabulary" for the stub path.
+            "lulc_in_vocabulary": True,
         }
 
 

@@ -102,14 +102,24 @@ def process_frame(
 
     assets, consequence, population = assess_consequence(context)
     route = route_override or arbitrate(
-        probs, prediction["anomaly_score"], features, fused.sensor_agreement_state, config
+        probs,
+        prediction["anomaly_score"],
+        features,
+        fused.sensor_agreement_state,
+        config,
+        lulc_in_vocabulary=prediction["lulc_in_vocabulary"],
     )
     fused = fused.model_copy(update={"route_state": route})
 
     exposure = consequence if consequence > 0 else config.risk.exposure_default
     risk = risk_score(probs, features, exposure, config)
     rule_fired = which_rule_fired(
-        probs, prediction["anomaly_score"], features, fused.sensor_agreement_state, config
+        probs,
+        prediction["anomaly_score"],
+        features,
+        fused.sensor_agreement_state,
+        config,
+        lulc_in_vocabulary=prediction["lulc_in_vocabulary"],
     )
 
     explanation = _explanation(context, features, probs, fused.sensor_agreement_state.value)
