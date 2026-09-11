@@ -192,9 +192,13 @@ class IsolationForestInference:
         try:
             model_data = self._load()
             model = model_data["model"]
-            features = model_data["features"]
+            # `feature_names_in_` reflects the column order actually seen by .fit() —
+            # trust it over model_data["features"], which is the *intended* order the
+            # training script meant to use and can drift out of sync with the real fit
+            # order (see backend/models/artifacts/train_isolation_forest.py).
+            features = list(getattr(model, "feature_names_in_", model_data["features"]))
             version = model_data["version"]
-            
+
             import pandas as pd
             row_df = pd.DataFrame([{f: features_dict.get(f, 0.0) for f in features}])
             # Scale decision function to [0, 1] range where higher means more anomalous
@@ -250,7 +254,15 @@ class CatBoostInference:
         self._model = model
         return model
 
-    def infer(self, detections: list[Detection], context: dict[str, Any]) -> dict[str, Any]:
+    def infer(
+        self, detections: list[Detection], context: dict[str, Any], *, live: bool = False
+    ) -> dict[str, Any]:
+        """``live=True`` (the live single-pixel endpoint) always uses the real Isolation
+        Forest score. Curated replay/demo scenarios (``live=False``, the default) always
+        honor an explicit ``stub_anomaly_score`` pin from the scenario pack, for
+        reproducible demos, falling back to the real model only when nothing is pinned -
+        never the other way around, or every curated frame would drift with the model.
+        """
         model = self._load()
         row, lulc_known = build_feature_row(detections, context)
         pool = self._pool([row], cat_features=list(CATEGORICAL_INDICES))
@@ -263,10 +275,15 @@ class CatBoostInference:
         probabilities[top] = probabilities[top] + drift
 
         features_dict = dict(zip(FEATURE_NAMES, row))
-        
-        anomaly_score, anomaly_version = iforest_inference.get_anomaly_score(features_dict)
-        if anomaly_score < 0:
-            anomaly_score = max(0.0, min(1.0, float(context.get("stub_anomaly_score", 0.1))))
+
+        pinned = context.get("stub_anomaly_score")
+        if live or pinned is None:
+            anomaly_score, anomaly_version = iforest_inference.get_anomaly_score(features_dict)
+            if anomaly_score < 0:
+                anomaly_score = max(0.0, min(1.0, float(pinned if pinned is not None else 0.1)))
+                anomaly_version = ANOMALY_MODEL_VERSION
+        else:
+            anomaly_score = max(0.0, min(1.0, float(pinned)))
             anomaly_version = ANOMALY_MODEL_VERSION
 
         return {

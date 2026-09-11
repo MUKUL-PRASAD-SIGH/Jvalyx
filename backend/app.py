@@ -23,6 +23,7 @@ from backend.api import events as events_routes
 from backend.api import facilities as facilities_routes
 from backend.api import firms as firms_routes
 from backend.api import scenarios as scenario_routes
+from backend.api import triage as triage_routes
 from backend.api import weather as weather_routes
 from backend.api import ws as ws_routes
 from backend.config import load_config
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
                 "WS /ws/events",
                 "GET /api/firms/{path:path}",
                 "GET /api/weather",
+                "POST /api/triage/classify",
             ],
         }
 
@@ -106,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(firms_routes.router)
     app.include_router(weather_routes.router)
     app.include_router(facilities_routes.router)
+    app.include_router(triage_routes.router)
 
     return app
 

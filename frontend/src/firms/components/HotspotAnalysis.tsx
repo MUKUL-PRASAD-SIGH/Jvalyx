@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useFires, useFiresDispatch, useVisibleDetections } from '../state/store';
 import { triageHotspot } from '../analysis/triage';
+import { classifyDetectionBackend, type BackendClassification } from '../analysis/backendClassify';
 import { fetchLiveWeather, type LiveWeatherData } from '../../services/weather';
 import { FIRE_CLASSES } from '../../data/scenarios';
 import type { FireClassId, RouteState } from '../../types';
@@ -54,9 +55,39 @@ export function HotspotAnalysis() {
     };
   }, [detection?.id, detection?.latitude, detection?.longitude]);
 
+  const [backendClassification, setBackendClassification] = useState<BackendClassification | null>(null);
+  const [backendUnavailable, setBackendUnavailable] = useState(false);
+
+  useEffect(() => {
+    if (!detection) {
+      setBackendClassification(null);
+      setBackendUnavailable(false);
+      return;
+    }
+    let active = true;
+    const controller = new AbortController();
+    setBackendClassification(null);
+    classifyDetectionBackend(detection, controller.signal)
+      .then((result) => {
+        if (active) {
+          setBackendClassification(result);
+          setBackendUnavailable(false);
+        }
+      })
+      .catch(() => {
+        // Backend unreachable/erroring — triageHotspot() below falls back to its local
+        // heuristic exactly like the digital twin falls back to the offline replay pack.
+        if (active) setBackendUnavailable(true);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [detection?.id, detection?.latitude, detection?.longitude]);
+
   const triage = useMemo(
-    () => (detection ? triageHotspot(detection, weather ?? undefined) : null),
-    [detection, weather],
+    () => (detection ? triageHotspot(detection, weather ?? undefined, backendClassification ?? undefined) : null),
+    [detection, weather, backendClassification],
   );
 
   if (!analysisOpen) return null;
@@ -81,6 +112,19 @@ export function HotspotAnalysis() {
           <div className="p-6 text-sm text-white/50">Select a fire detection on the map to analyse it.</div>
         ) : (
           <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
+            <div className="flex items-center justify-end">
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                  triage.source === 'model'
+                    ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-zinc-800/60 text-zinc-400 border border-zinc-600/40',
+                )}
+              >
+                {triage.source === 'model' ? 'Live model' : backendUnavailable ? 'Offline heuristic (backend unreachable)' : 'Offline heuristic'}
+              </span>
+            </div>
+
             <RouteBanner route={triage.routeState} />
 
             {triage.context.industrialPolygon && (
@@ -101,7 +145,7 @@ export function HotspotAnalysis() {
               </div>
             )}
 
-            <Section title="Classification (heuristic context lens)">
+            <Section title={triage.source === 'model' ? 'Classification (trained CatBoost model)' : 'Classification (offline heuristic lens)'}>
               <div className="mb-2 flex items-center gap-2">
                 <span
                   className="h-3 w-3"
