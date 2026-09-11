@@ -140,10 +140,20 @@ class ReplayWorker:
     def set_speed(self, speed: float) -> None:
         self._engine.set_speed(speed)
 
-    def jump_to(self, checkpoint: str) -> None:
+    async def jump_to(self, checkpoint: str) -> None:
         self._require_scenario()
+        # A scrub must win over an in-flight run, otherwise the running loop keeps
+        # advancing from its own index and immediately overwrites the jump.
+        self._cancel_task()
         self._engine.jump_to(checkpoint)
-        self._persist_frame(self._engine.current_frame_index)
+        await self._publish_frame(self._engine.current_frame_index, "jump")
+
+    async def step(self, delta: int) -> None:
+        """Nudge the playhead one frame at a time (operator scrub)."""
+        self._require_scenario()
+        self._cancel_task()
+        index = self._engine.step(delta)
+        await self._publish_frame(index, "step")
 
     async def shutdown(self) -> None:
         self._cancel_task()
@@ -253,6 +263,29 @@ class ReplayWorker:
         with contextlib.suppress(asyncio.CancelledError):
             await self._engine.run(publish)
             await self._broadcaster.publish(self._status_message("completed"))
+
+    async def _publish_frame(self, index: int, reason: str) -> EventIntelligence:
+        """Persist a frame outside of playback and push it to connected clients."""
+        intelligence = self._persist_frame(index)
+        await self._broadcaster.publish(
+            {
+                "type": "event_update",
+                "timestamp": intelligence.timestamp,
+                "event_id": intelligence.event_id,
+                "frame_index": intelligence.frame_index,
+                "checkpoint": intelligence.checkpoint,
+                "changed": ["frame_index", "route_state", "risk_score"],
+                "payload": {
+                    "route_state": intelligence.route_state.value,
+                    "risk_score": intelligence.risk.total,
+                    "class_id": intelligence.decision.class_id,
+                    "recommended_action": intelligence.decision.recommended_action,
+                    "mode": intelligence.mode.value,
+                },
+            }
+        )
+        await self._broadcaster.publish(self._status_message(reason))
+        return intelligence
 
     def _persist_frame(self, index: int) -> EventIntelligence:
         scenario = self._require_scenario()

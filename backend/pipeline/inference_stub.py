@@ -1,12 +1,17 @@
-"""Placeholder for the CatBoost triage classifier + Isolation Forest anomaly path.
+"""Hand-authored fallback for the triage classifier + Isolation Forest anomaly path.
 
-Training is out of scope for this phase. ``stub_infer`` returns a hand-authored
-probability distribution and anomaly score per replay frame, matching the exact output
-shape the trained models will eventually produce. Swapping in the real models touches
-only this module.
+The trained CatBoost classifier now lives in ``pipeline/inference.py`` and is the default
+path. This module remains the fallback when the model or the ``catboost`` dependency is
+unavailable, and the pinned deterministic path for the golden-scenario tests
+(``JVALYX_INFERENCE=stub``). It still supplies the anomaly score in both cases: no
+Isolation Forest artifact exists anywhere in the repo.
+
+Both engines expose the same ``infer(detections, context)`` signature.
 """
 
 from typing import Any
+
+from backend.models import Detection
 
 MODEL_VERSION = "stub-0.1.0"
 ANOMALY_MODEL_VERSION = "iforest-stub-0.1.0"
@@ -34,7 +39,9 @@ def _normalize(probs: dict[int, float]) -> dict[int, float]:
 class StubInference:
     """Per-frame outputs, shaped like ``predict_proba`` + ``decision_function``."""
 
-    def infer(self, context: dict[str, Any]) -> dict[str, Any]:
+    def infer(self, detections: list[Detection], context: dict[str, Any]) -> dict[str, Any]:
+        """``detections`` is accepted for interface parity; the stub reads only context."""
+        del detections
         raw = context.get("stub_class_probabilities") or {5: 1.0}
         probs = _normalize({int(k): float(v) for k, v in raw.items()})
         class_id = max(probs, key=probs.get)
@@ -45,6 +52,7 @@ class StubInference:
             "class_name": CLASS_NAMES[class_id],
             "anomaly_score": max(0.0, min(1.0, anomaly)),
             "model_version": MODEL_VERSION,
+            "anomaly_model_version": ANOMALY_MODEL_VERSION,
         }
 
 

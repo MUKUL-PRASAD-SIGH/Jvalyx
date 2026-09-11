@@ -20,15 +20,22 @@ from pydantic import BaseModel
 
 from backend.api import config as config_routes
 from backend.api import events as events_routes
+from backend.api import facilities as facilities_routes
+from backend.api import firms as firms_routes
 from backend.api import scenarios as scenario_routes
+from backend.api import weather as weather_routes
 from backend.api import ws as ws_routes
 from backend.config import load_config
+from backend.pipeline import active_model_version
 from backend.runtime import replay_worker
 
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:4173",
+    # containerised frontend (docker compose `web` service)
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
 
 
@@ -52,7 +59,8 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
-        allow_origin_regex=r"http://localhost:\d+",
+        # 127.0.0.1 as well as localhost: the compose frontend is reachable on both.
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -62,7 +70,7 @@ def create_app() -> FastAPI:
         return {
             "service": "jvalyx-backend",
             "version": app.version,
-            "model_version": config.versions.model_version,
+            "model_version": active_model_version(),
             "policy_version": config.versions.policy_version,
             "docs": "/docs",
             "endpoints": [
@@ -77,6 +85,8 @@ def create_app() -> FastAPI:
                 "POST /events/{id}/verify",
                 "GET /audit",
                 "WS /ws/events",
+                "GET /api/firms/{path:path}",
+                "GET /api/weather",
             ],
         }
 
@@ -85,7 +95,7 @@ def create_app() -> FastAPI:
         return HealthResponse(
             status="ok",
             service="jvalyx-backend",
-            model_version=config.versions.model_version,
+            model_version=active_model_version(),
             policy_version=config.versions.policy_version,
         )
 
@@ -93,6 +103,9 @@ def create_app() -> FastAPI:
     app.include_router(events_routes.router)
     app.include_router(config_routes.router)
     app.include_router(ws_routes.router)
+    app.include_router(firms_routes.router)
+    app.include_router(weather_routes.router)
+    app.include_router(facilities_routes.router)
 
     return app
 

@@ -43,7 +43,7 @@ const initialLayers: LayerState = {
     },
     {} as Record<string, { on: boolean; opacity: number }>,
   ),
-  overlays: { protectedAreas: true, stateBoundaries: true, labels: true },
+  overlays: { protectedAreas: true, industrialZones: true, stateBoundaries: true, labels: true },
   fireOpacity: 1,
   colorMode: 'time',
   basemapId: DEFAULT_BASEMAP_ID,

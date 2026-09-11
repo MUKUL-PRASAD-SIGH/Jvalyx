@@ -1,5 +1,5 @@
-import { Flame } from 'lucide-react';
-import { FiresProvider, useFires } from './state/store';
+import { FiresProvider, useFires, useFiresDispatch, useVisibleDetections } from './state/store';
+import { X, Flame, Sparkles } from 'lucide-react';
 import { FireMap } from './map/FireMap';
 import { TopBar } from './components/TopBar';
 import { HamburgerNav } from './components/HamburgerNav';
@@ -15,13 +15,65 @@ import { DataStatusChip } from './components/DataStatusChip';
 import { HotspotAnalysis } from './components/HotspotAnalysis';
 
 function BurnedAreaPanel() {
+  const visible = useVisibleDetections();
+  const dispatch = useFiresDispatch();
+
+  // Estimate cumulative thermal burn footprint from visible pixels
+  const totalBurnAreaSqKm = visible.reduce((acc, d) => {
+    const pixelArea = (d.scan || 0.38) * (d.track || 0.38);
+    return acc + pixelArea;
+  }, 0);
+
+  const severeFires = visible.filter((d) => d.frp >= 50);
+
   return (
-    <div className="w-[330px] rounded-lg border border-white/10 bg-[#0b0f14] p-4 text-sm text-white/60 shadow-2xl">
-      <div className="mb-2 flex items-center gap-2 font-black uppercase tracking-widest text-orange-300">
-        <Flame className="h-4 w-4" /> Burned Area
+    <div className="w-[330px] rounded-lg border border-white/15 bg-[#0b0f14] p-3.5 text-xs text-white shadow-2xl">
+      <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
+        <div className="flex items-center gap-2 font-black uppercase tracking-wider text-orange-400">
+          <Flame className="h-4 w-4" />
+          <span>Burn Footprint Analysis</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'setPanelMode', mode: null })}
+          className="rounded p-1 hover:bg-white/10"
+        >
+          <X className="h-3.5 w-3.5 text-white/60" />
+        </button>
       </div>
-      Monthly MODIS / VIIRS burned-area mosaics for India are not wired in this build.
-      Active-fire hotspots remain the primary layer.
+
+      <div className="space-y-2 font-mono text-[11px]">
+        <div className="flex items-center justify-between rounded bg-white/5 px-2.5 py-1.5">
+          <span className="text-white/60">Active Thermal Hotspots:</span>
+          <span className="font-bold text-amber-300">{visible.length.toLocaleString()}</span>
+        </div>
+        <div className="flex items-center justify-between rounded bg-white/5 px-2.5 py-1.5">
+          <span className="text-white/60">Estimated Burn Footprint:</span>
+          <span className="font-bold text-orange-300">~{totalBurnAreaSqKm.toFixed(1)} km²</span>
+        </div>
+        <div className="flex items-center justify-between rounded bg-white/5 px-2.5 py-1.5">
+          <span className="text-white/60">High-Severity Fronts (&gt;50 MW):</span>
+          <span className="font-bold text-rose-400">{severeFires.length.toLocaleString()}</span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex gap-1.5">
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'setColorMode', mode: 'frp' })}
+          className="flex-1 flex items-center justify-center gap-1 rounded bg-orange-600/80 px-2 py-1.5 font-sans text-[11px] font-semibold hover:bg-orange-600 transition-colors"
+        >
+          <Sparkles className="h-3 w-3" />
+          Color by FRP
+        </button>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'openTable' })}
+          className="flex-1 flex items-center justify-center gap-1 rounded border border-white/15 bg-white/5 px-2 py-1.5 font-sans text-[11px] font-semibold hover:bg-white/10 transition-colors"
+        >
+          Inspect Table
+        </button>
+      </div>
     </div>
   );
 }
@@ -30,7 +82,7 @@ function Shell() {
   const { panelMode, activeTool, dataStatus } = useFires();
 
   return (
-    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#08131b] font-sans text-white">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#08131b] font-sans text-white">
       <TopBar />
 
       <div className="relative flex-1">

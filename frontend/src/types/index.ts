@@ -8,15 +8,16 @@ export interface FireClassInfo {
   defaultRoute: RouteState;
 }
 
-export type SensorType = 'VIIRS' | 'MODIS' | 'INSAT' | 'REPLAY';
+export type SensorType = 'VIIRS' | 'MODIS' | 'REPLAY';
 
 export type RouteState = 'NORMAL' | 'UNCERTAIN' | 'CRITICAL';
 
 export type SensorAgreementState = 
-  | 'full_agreement' 
-  | 'temporally_confirmed_spatially_coarse' 
-  | 'single_sensor_high_res' 
-  | 'disagreement';
+  | 'single_sensor'
+  | 'multi_sensor_same_instrument'
+  | 'multi_sensor_cross_confirmed'
+  | 'disagreement'
+  | 'unknown';
 
 export interface Detection {
   detection_id: string;
@@ -30,6 +31,7 @@ export interface Detection {
   scan_km?: number;
   track_km?: number;
   confidence?: 'low' | 'nominal' | 'high';
+  daynight?: 0 | 1;
   cloud_flag?: boolean;
   sun_glint_flag?: boolean;
   quality_score: number;
@@ -42,6 +44,8 @@ export interface FusedEvent {
   longitude: number;
   detections: Detection[];
   sensor_count: number;
+  corroboration_count?: number;
+  data_quality_pass?: boolean;
   sensor_agreement_state: SensorAgreementState;
   data_quality_flag: string;
   data_quality_score: number;
@@ -73,7 +77,7 @@ export interface DecisionOutput {
   anomaly_score: number; // Isolation forest normalized [0, 1]
   route_state: RouteState;
   risk_score: number; // [0, 100]
-  confidence_state: 'low' | 'moderate' | 'high';
+  confidence_state: 'low' | 'moderate' | 'medium' | 'high';
   explanation: string[];
   recommended_action: string;
   model_version: string;

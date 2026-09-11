@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { useFires, useFiresDispatch, useVisibleDetections } from '../state/store';
-import { BASEMAPS, REFERENCE_LABELS_URL } from '../config/basemaps';
+import { BASEMAPS, getReferenceLabelUrl } from '../config/basemaps';
 import { GIBS_DYNAMIC_IMAGERY, gibsUrlTemplate } from '../config/gibs';
 import { PROTECTED_AREAS } from '../config/protectedAreas';
 import {
@@ -28,6 +28,7 @@ export function FireMap() {
   const labelsRef = useRef<L.TileLayer | null>(null);
   const gibsRef = useRef<Record<string, L.TileLayer>>({});
   const paRef = useRef<L.LayerGroup | null>(null);
+  const indRef = useRef<L.GeoJSON | null>(null);
   const fireRef = useRef<ReturnType<typeof createFireCanvasLayer> | null>(null);
 
   /* -- init -------------------------------------------------------------- */
@@ -111,14 +112,14 @@ export function FireMap() {
     }).addTo(map);
     basemapRef.current.setZIndex(100);
 
-    const needLabels = (cfg.group === 'imagery' || cfg.group === 'dark') && state.layers.overlays.labels;
+    const needLabels = (cfg.group === 'imagery' || cfg.group === 'dark' || cfg.id === 'carto-light') && state.layers.overlays.labels;
     if (labelsRef.current) {
       map.removeLayer(labelsRef.current);
       labelsRef.current = null;
     }
     if (needLabels) {
-      labelsRef.current = L.tileLayer(REFERENCE_LABELS_URL, {
-        maxZoom: 13,
+      labelsRef.current = L.tileLayer(getReferenceLabelUrl(cfg.id), {
+        maxZoom: 18,
         opacity: 0.85,
         pane: 'shadowPane',
       }).addTo(map);
@@ -179,6 +180,65 @@ export function FireMap() {
     group.eachLayer((l) => (l as L.Path).bringToBack());
     paRef.current = group;
   }, [state.layers.overlays.protectedAreas]);
+
+  /* -- industrial & mining zones ------------------------------------ */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (indRef.current) {
+      map.removeLayer(indRef.current);
+      indRef.current = null;
+    }
+    if (!state.layers.overlays.industrialZones) return;
+
+    let active = true;
+    fetch('/data/india_industrial_polygons_tagged.geojson')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active || !mapRef.current) return;
+        const layer = L.geoJSON(data, {
+          style: (feature) => {
+            const props = feature?.properties || {};
+            const isMine = props.coal_industrial_zone || props.industrial === 'mine';
+            return {
+              color: isMine ? '#f59e0b' : '#38bdf8',
+              weight: 1.5,
+              dashArray: '4, 4',
+              opacity: 0.85,
+              fillColor: isMine ? '#d97706' : '#0284c7',
+              fillOpacity: 0.18,
+            };
+          },
+          onEachFeature: (feature, l) => {
+            const props = feature.properties || {};
+            const name = props.name || props.coal_industrial_zone || 'Industrial Facility';
+            const zone = props.coal_industrial_zone
+              ? String(props.coal_industrial_zone).replace(/_/g, ' ')
+              : 'General Industrial';
+            const area = props.area_sqkm ? `${Number(props.area_sqkm).toFixed(2)} km²` : '';
+            l.bindTooltip(
+              `<div class="font-mono text-xs font-bold text-zinc-100">${name}</div>
+               <div class="font-mono text-[10px] text-amber-300 font-bold">${zone}</div>
+               ${area ? `<div class="font-mono text-[9px] text-zinc-400">Area: ${area}</div>` : ''}`,
+              { sticky: true },
+            );
+          },
+        }).addTo(map);
+        layer.eachLayer((l) => (l as L.Path).bringToBack());
+        indRef.current = layer;
+      })
+      .catch((err) => {
+        console.warn('Failed to load industrial polygons GeoJSON:', err);
+      });
+
+    return () => {
+      active = false;
+      if (indRef.current && mapRef.current) {
+        mapRef.current.removeLayer(indRef.current);
+        indRef.current = null;
+      }
+    };
+  }, [state.layers.overlays.industrialZones]);
 
   /* -- fire data + style -------------------------------------------- */
   useEffect(() => {

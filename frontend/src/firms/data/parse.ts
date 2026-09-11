@@ -74,7 +74,7 @@ export function parseFirmsCsv(csv: string, productId: ProductId): FireDetection[
     const confidenceRaw = (cConf !== -1 ? cells[cConf] : 'n')?.trim() || 'n';
 
     rows.push({
-      id: `${productId}-${i}-${lat.toFixed(4)}-${lon.toFixed(4)}-${acqTime}`,
+      id: `${productId}-${lat.toFixed(4)}-${lon.toFixed(4)}-${acqDate}-${acqTime}`,
       latitude: lat,
       longitude: lon,
       brightness: cBright !== -1 ? Number(cells[cBright]) || 0 : 0,

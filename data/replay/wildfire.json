@@ -69,7 +69,7 @@
         "persistence_score": 0.03,
         "baseline_frp_mean": 4.2,
         "baseline_frp_std": 2.1,
-        "sensor_agreement_state": "agreement",
+        "sensor_agreement_state": "multi_sensor_cross_confirmed",
         "sensor_count": 2,
         "data_quality_flag": "NOMINAL",
         "data_quality_score": 0.94,

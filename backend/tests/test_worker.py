@@ -38,7 +38,7 @@ async def test_worker_replays_industrial_escalation_to_critical(fast_worker: Rep
 
 async def test_worker_verify_overrides_route_and_writes_audit(fast_worker: ReplayWorker) -> None:
     fast_worker.load("industrial_escalation")
-    fast_worker.jump_to("critical_state")
+    await fast_worker.jump_to("critical_state")
 
     updated = fast_worker.verify("evt-industrial_escalation", "reject", "OPS-1", "")
     assert updated.route_state.value == "NORMAL"
@@ -55,3 +55,32 @@ async def test_worker_simulate_tags_demo_mode(fast_worker: ReplayWorker) -> None
 
     assert simulated.mode.value == "DEMO SIMULATION MODE"
     assert simulated.route_state.value == "CRITICAL"
+
+
+async def test_worker_step_scrubs_frames_and_publishes(fast_worker: ReplayWorker) -> None:
+    fast_worker.load("industrial_escalation")
+
+    await fast_worker.step(1)
+    await fast_worker.step(1)
+    assert fast_worker.status()["frame_index"] == 2
+
+    await fast_worker.step(-1)
+    assert fast_worker.status()["frame_index"] == 1
+
+    # Clamped at the start; never negative.
+    await fast_worker.step(-1)
+    await fast_worker.step(-1)
+    assert fast_worker.status()["frame_index"] == 0
+
+    updates = [m for m in fast_worker.broadcaster.messages if m["type"] == "event_update"]  # type: ignore[attr-defined]
+    assert [m["frame_index"] for m in updates] == [1, 2, 1, 0, 0]
+
+
+async def test_worker_jump_wins_over_running_playback(fast_worker: ReplayWorker) -> None:
+    fast_worker.load("industrial_escalation")
+    await fast_worker.start()
+    await fast_worker.jump_to("baseline")
+
+    status = fast_worker.status()
+    assert status["replay_status"] == "IDLE"
+    assert status["frame_index"] == 0  # "baseline" is frame 0

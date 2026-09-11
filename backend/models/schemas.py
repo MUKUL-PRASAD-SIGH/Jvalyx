@@ -20,10 +20,13 @@ class DataMode(StrEnum):
 
 
 class SensorAgreementState(StrEnum):
-    AGREEMENT = "agreement"
     SINGLE_SENSOR = "single_sensor"
+    MULTI_SENSOR_SAME_INSTRUMENT = "multi_sensor_same_instrument"
+    MULTI_SENSOR_CROSS_CONFIRMED = "multi_sensor_cross_confirmed"
     DISAGREEMENT = "disagreement"
     UNKNOWN = "unknown"
+    # Legacy alias support
+    AGREEMENT = "agreement"
 
 
 class ConfidenceState(StrEnum):
@@ -38,7 +41,7 @@ class Detection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     detection_id: str = Field(min_length=1)
-    sensor: Literal["VIIRS", "MODIS", "INSAT", "REPLAY"]
+    sensor: Literal["VIIRS", "MODIS", "REPLAY"]
     timestamp: datetime
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
@@ -48,6 +51,7 @@ class Detection(BaseModel):
     scan_km: float | None = Field(default=None, gt=0)
     track_km: float | None = Field(default=None, gt=0)
     confidence: str | None = None
+    daynight: int | None = Field(default=None, ge=0, le=1)
     cloud_flag: bool = False
     raw_quality: dict[str, Any] = Field(default_factory=dict)
 
@@ -63,6 +67,8 @@ class FusedEvent(BaseModel):
     longitude: float = Field(ge=-180, le=180)
     detections: list[Detection] = Field(min_length=1)
     sensor_count: int = Field(ge=1)
+    corroboration_count: int = Field(default=1, ge=0)
+    data_quality_pass: bool = Field(default=True)
     sensor_agreement_state: SensorAgreementState = SensorAgreementState.UNKNOWN
     data_quality_flag: str = "UNKNOWN"
     facility_id: str | None = None

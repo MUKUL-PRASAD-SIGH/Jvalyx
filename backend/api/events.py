@@ -56,3 +56,20 @@ async def verify_event(event_id: str, request: VerifyRequest) -> EventIntelligen
 @router.get("/audit", response_model=list[AuditEntry])
 async def audit_log() -> list[AuditEntry]:
     return replay_worker.store.audit_log()
+
+
+@router.get("/audit/offshore-status")
+async def audit_offshore_status() -> dict:
+    return replay_worker.store.offshore_status()
+
+
+@router.post("/audit/offshore-sync")
+async def audit_offshore_sync() -> dict:
+    synced_now = replay_worker.store.sync_pending_offshore()
+    status = replay_worker.store.offshore_status()
+    return {
+        "status": "success",
+        "synced_now": synced_now,
+        **status,
+    }
+

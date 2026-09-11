@@ -1,15 +1,10 @@
 /**
  * Client for the Jvalyx backend (FastAPI).
  *
- * This file is the ONLY frontend wiring to the backend so far. `App.tsx` still runs the
- * bundled scenario pack + client-side math; plugging this client in (and keeping the
- * local pack as an offline fallback) is the remaining integration step.
- *
- * Backend contract note — a few field vocabularies differ from `types/index.ts`:
- *   - sensor agreement: backend uses `agreement | single_sensor | disagreement | unknown`
- *   - confidence state: backend uses `low | medium | high` (not `moderate`)
- *   - detection quality lives under `raw_quality`, not a top-level `quality_score`
- * Reconcile these when wiring, or add a mapping layer here.
+ * `hooks/useBackendReplay.ts` drives the digital-twin dashboard from these calls plus
+ * the `/ws/events` stream; `services/adapters.ts` reshapes the payloads into the
+ * frontend `ScenarioFrame` vocabulary. When the backend is unreachable the dashboard
+ * falls back to the bundled scenario pack and client-side math.
  */
 
 const BASE_URL: string =
@@ -102,10 +97,12 @@ export interface BackendAuditEntry {
   new_route_state: BackendRouteState | null;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
+  const { timeoutMs, ...rest } = init ?? {};
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
-    ...init,
+    signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
+    ...rest,
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => response.statusText);
@@ -117,7 +114,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const jvalyxApi = {
   baseUrl: BASE_URL,
 
-  health: () => request<{ status: string; model_version: string; policy_version: string }>('/health'),
+  health: () =>
+    request<{ status: string; model_version: string; policy_version: string }>('/health', {
+      timeoutMs: 2500,
+    }),
   config: () => request<Record<string, unknown>>('/config'),
 
   listScenarios: () => request<BackendScenarioSummary[]>('/scenarios'),
@@ -130,6 +130,8 @@ export const jvalyxApi = {
     request<BackendReplayStatus>('/replay/speed', { method: 'POST', body: JSON.stringify({ speed }) }),
   jump: (checkpoint: string) =>
     request<BackendReplayStatus>('/replay/jump', { method: 'POST', body: JSON.stringify({ checkpoint }) }),
+  step: (delta: 1 | -1) =>
+    request<BackendReplayStatus>('/replay/step', { method: 'POST', body: JSON.stringify({ delta }) }),
   replayStatus: () => request<BackendReplayStatus>('/replay/status'),
 
   listEvents: () => request<BackendEventIntelligence[]>('/events'),
@@ -145,6 +147,26 @@ export const jvalyxApi = {
       body: JSON.stringify({ decision, operator, notes }),
     }),
   audit: () => request<BackendAuditEntry[]>('/audit'),
+  offshoreStatus: () =>
+    request<{
+      configured: boolean;
+      type: 'postgresql' | 'http_rest' | 'none';
+      target_url: string | null;
+      local_total: number;
+      synced_offshore: number;
+      pending_offshore: number;
+    }>('/audit/offshore-status'),
+  syncOffshore: () =>
+    request<{
+      status: string;
+      synced_now: number;
+      configured: boolean;
+      type: string;
+      target_url: string | null;
+      local_total: number;
+      synced_offshore: number;
+      pending_offshore: number;
+    }>('/audit/offshore-sync', { method: 'POST' }),
 };
 
 export type JvalyxSocketMessage =

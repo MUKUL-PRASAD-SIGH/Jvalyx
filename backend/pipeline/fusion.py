@@ -12,16 +12,30 @@ HIGH_QUALITY_THRESHOLD = 0.5
 
 
 def fusion_state(detections: list[Detection]) -> SensorAgreementState:
-    """Categorical fusion state. ``disagreement`` must never collapse to 'no fire'."""
+    """Categorical 3(+1) fusion state:
+    - single_sensor: 1 quality-passed detection
+    - multi_sensor_same_instrument: >=2 quality-passed detections from the same instrument
+    - multi_sensor_cross_confirmed: quality-passed detections cross-confirmed across >=2 instruments (VIIRS + MODIS)
+    - disagreement: conflicting detections or detections failing quality checks
+    """
+    if not detections:
+        return SensorAgreementState.UNKNOWN
+
     high_quality = [d for d in detections if quality_score(d) >= HIGH_QUALITY_THRESHOLD]
+    if not high_quality:
+        return SensorAgreementState.DISAGREEMENT
+
     sensors = {d.sensor for d in high_quality}
     if len(sensors) >= 2:
-        return SensorAgreementState.AGREEMENT
-    if len(detections) >= 1 and not high_quality:
+        return SensorAgreementState.MULTI_SENSOR_CROSS_CONFIRMED
+
+    if len(high_quality) >= 2:
+        return SensorAgreementState.MULTI_SENSOR_SAME_INSTRUMENT
+
+    if len(detections) > 1 and len(high_quality) == 1:
         return SensorAgreementState.DISAGREEMENT
-    if sensors & {"VIIRS", "MODIS", "INSAT"}:
-        return SensorAgreementState.SINGLE_SENSOR
-    return SensorAgreementState.UNKNOWN
+
+    return SensorAgreementState.SINGLE_SENSOR
 
 
 def agreement_score(detections: list[Detection]) -> float:
@@ -55,10 +69,21 @@ def build_fused_event(
     otherwise it is derived from the detection quality mix.
     """
     pinned = context.get("sensor_agreement_state")
+    if pinned in ("agreement", "full_agreement"):
+        pinned = SensorAgreementState.MULTI_SENSOR_CROSS_CONFIRMED
+    elif pinned in ("single_sensor_high_res",):
+        pinned = SensorAgreementState.SINGLE_SENSOR
+    elif pinned in ("temporally_confirmed_spatially_coarse",):
+        pinned = SensorAgreementState.MULTI_SENSOR_CROSS_CONFIRMED
+
     try:
         state = SensorAgreementState(pinned) if pinned else fusion_state(detections)
     except ValueError:
         state = fusion_state(detections)
+
+    high_quality = [d for d in detections if quality_score(d) >= HIGH_QUALITY_THRESHOLD]
+    corroboration_count = len(high_quality)
+    data_quality_pass = len(high_quality) > 0 and all(quality_score(d) >= HIGH_QUALITY_THRESHOLD for d in detections)
 
     return FusedEvent(
         event_id=event_id,
@@ -67,6 +92,8 @@ def build_fused_event(
         longitude=longitude,
         detections=detections,
         sensor_count=int(context.get("sensor_count", len({d.sensor for d in detections}))),
+        corroboration_count=corroboration_count,
+        data_quality_pass=data_quality_pass,
         sensor_agreement_state=state,
         data_quality_flag=str(context.get("data_quality_flag", "UNKNOWN")),
         facility_id=context.get("facility_id"),

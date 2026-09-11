@@ -87,6 +87,18 @@ class ReplayEngine:
         self._status = ReplayStatus.IDLE
         self._resume_event.set()
 
+    def step(self, delta: int) -> int:
+        """Move the playhead ``delta`` frames and hold there (clamped to the scenario).
+
+        Stepping is an operator scrub, not playback: the engine lands in IDLE so the
+        caller decides whether to resume.
+        """
+        scenario = self._require_scenario()
+        self._frame_index = max(0, min(self._frame_index + delta, len(scenario.frames) - 1))
+        self._status = ReplayStatus.IDLE
+        self._resume_event.set()
+        return self._frame_index
+
     def jump_to(self, checkpoint: str) -> None:
         scenario = self._require_scenario()
         for index, frame in enumerate(scenario.frames):

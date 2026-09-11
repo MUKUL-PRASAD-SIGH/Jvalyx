@@ -40,7 +40,7 @@ export function TimeControls({ variant = 'basic' }: { variant?: 'basic' | 'advan
         </Pill>
         {variant === 'advanced' && (
           <Pill active={timeRange.window === '48h'} onClick={() => dispatch({ type: 'setTimeWindow', window: '48h' })}>
-            3 days
+            48 hrs
           </Pill>
         )}
         <Pill active={timeRange.window === '7d'} onClick={() => dispatch({ type: 'setTimeWindow', window: '7d' })}>

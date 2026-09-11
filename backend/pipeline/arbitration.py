@@ -36,7 +36,10 @@ def arbitrate(
     # A confident model call escalates on its own. The facility-anomaly heuristic only
     # escalates when the z-score rests on adequate-quality, corroborated data - otherwise
     # a cloud-attenuated reading is routed to verification, never auto-escalated.
-    strong_model_critical = p1 >= cfg.class1_threshold or p2 >= cfg.class2_threshold
+    strong_model_critical = (
+        (p1 >= cfg.class1_threshold or p2 >= cfg.class2_threshold)
+        and not disagreement
+    )
     industrial_anomaly_critical = (
         is_industrial
         and facility_z >= cfg.facility_z_threshold
@@ -45,12 +48,14 @@ def arbitrate(
     )
     critical = strong_model_critical or industrial_anomaly_critical
     uncertain = (
-        anomaly_score >= cfg.anomaly_threshold
-        or disagreement
+        disagreement
+        or anomaly_score >= cfg.anomaly_threshold
         or quality < cfg.min_quality
         or max_p < cfg.min_model_confidence
     )
 
+    if disagreement:
+        return RouteState.UNCERTAIN
     if critical:
         return RouteState.CRITICAL
     if uncertain:
@@ -117,6 +122,8 @@ def which_rule_fired(
     quality = features.get("data_quality_score", 1.0)
     disagreement = fusion_state == SensorAgreementState.DISAGREEMENT
 
+    if disagreement:
+        return "UNCERTAIN: sensor disagreement is routed to verification, never suppressed"
     if p1 >= cfg.class1_threshold:
         return f"CRITICAL: P(industrial fire) {p1:.2f} >= {cfg.class1_threshold}"
     if p2 >= cfg.class2_threshold:
@@ -125,11 +132,8 @@ def which_rule_fired(
         is_industrial
         and facility_z >= cfg.facility_z_threshold
         and quality >= cfg.min_quality
-        and not disagreement
     ):
         return f"CRITICAL: industrial polygon and facility Z {facility_z:.1f} >= {cfg.facility_z_threshold}"
-    if disagreement:
-        return "UNCERTAIN: sensor disagreement is routed to verification, never suppressed"
     if anomaly_score >= cfg.anomaly_threshold:
         return f"UNCERTAIN: anomaly score {anomaly_score:.2f} >= {cfg.anomaly_threshold}"
     if features.get("data_quality_score", 1.0) < cfg.min_quality:

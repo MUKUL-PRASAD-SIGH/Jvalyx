@@ -10,8 +10,52 @@ services:
       # ~2 scenario-minutes of observation time per real second of playback.
       JVALYX_REPLAY_COMPRESSION: "120"
       JVALYX_REPLAY_MAX_GAP_SECONDS: "6"
+      # `stub` pins the hand-authored probabilities for a scripted demo; see README.
+      JVALYX_INFERENCE: "${JVALYX_INFERENCE:-catboost}"
+      OFFSHORE_DB_URL: "${OFFSHORE_DB_URL:-postgresql://jvalyx:jvalyx_secret@offshore-db:5432/jvalyx_offshore}"
+      OFFSHORE_DB_KEY: "${OFFSHORE_DB_KEY:-}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
       interval: 10s
       timeout: 3s
       retries: 5
+    depends_on:
+      offshore-db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the bundle at build time. This is the address the *browser* uses,
+        # so it is the published host port above — not `http://api:8000`.
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8000}"
+        VITE_FIRMS_MAP_KEY: "${VITE_FIRMS_MAP_KEY:-}"
+        VITE_CARTO_API_KEY: "${VITE_CARTO_API_KEY:-}"
+    image: jvalyx-frontend:0.1.0
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  offshore-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: jvalyx
+      POSTGRES_PASSWORD: jvalyx_secret
+      POSTGRES_DB: jvalyx_offshore
+    ports:
+      - "5432:5432"
+    volumes:
+      - offshore_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jvalyx -d jvalyx_offshore"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  offshore_pgdata:
+

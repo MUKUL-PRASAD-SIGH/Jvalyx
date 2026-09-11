@@ -19,10 +19,12 @@ def _run(scenario_id: str, frame_index: int):
 def test_industrial_escalation_transitions_normal_to_critical() -> None:
     before = _run("industrial_escalation", 0)
     at_anomaly = _run("industrial_escalation", 1)
+    uncertain = _run("industrial_escalation", 2)
     critical = _run("industrial_escalation", 3)
 
     assert before.route_state.value == "NORMAL"
     assert at_anomaly.route_state.value == "NORMAL"
+    assert uncertain.route_state.value == "UNCERTAIN"
     assert critical.route_state.value == "CRITICAL"
     assert critical.decision.class_id == 1
     assert critical.risk.total >= 70

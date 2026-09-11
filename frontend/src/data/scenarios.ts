@@ -126,7 +126,7 @@ export const SCENARIOS: Scenario[] = [
             }
           ],
           sensor_count: 1,
-          sensor_agreement_state: 'single_sensor_high_res',
+          sensor_agreement_state: 'single_sensor',
           data_quality_flag: 'NOMINAL',
           data_quality_score: 0.95,
           facility_id: 'fac-mrpl-01',
@@ -179,8 +179,8 @@ export const SCENARIOS: Scenario[] = [
       {
         timestamp: '2026-09-05T10:35:00Z',
         frameIndex: 1,
-        label: 'T+20m: Multi-Pixel Surge Detected',
-        description: 'Facility FRP spikes to 112 MW (Z = 10.2). Three adjacent thermal pixels ignite near crude storage sector.',
+        label: 'T+20m: Multi-Pixel Surge Detected (Cloud Attenuated)',
+        description: 'Facility FRP surges under coastal cloud attenuation. Ambiguous thermal signal (quality 0.42, P(industrial)=0.40) routes to human verification before automated critical escalation.',
         fusedEvent: {
           event_id: 'evt-esc-001',
           created_at: '2026-09-05T10:35:00Z',
@@ -198,8 +198,9 @@ export const SCENARIOS: Scenario[] = [
               bright_ti5_k: 298.4,
               scan_km: 0.38,
               track_km: 0.38,
-              confidence: 'high',
-              quality_score: 0.95
+              confidence: 'nominal',
+              cloud_flag: true,
+              quality_score: 0.42
             },
             {
               detection_id: 'det-viirs-02b',
@@ -212,8 +213,9 @@ export const SCENARIOS: Scenario[] = [
               bright_ti5_k: 297.8,
               scan_km: 0.38,
               track_km: 0.38,
-              confidence: 'high',
-              quality_score: 0.95
+              confidence: 'nominal',
+              cloud_flag: true,
+              quality_score: 0.42
             },
             {
               detection_id: 'det-modis-01',
@@ -226,14 +228,15 @@ export const SCENARIOS: Scenario[] = [
               bright_ti5_k: 299.1,
               scan_km: 1.0,
               track_km: 1.0,
-              confidence: 'high',
-              quality_score: 0.90
+              confidence: 'nominal',
+              cloud_flag: true,
+              quality_score: 0.42
             }
           ],
           sensor_count: 2,
-          sensor_agreement_state: 'full_agreement',
-          data_quality_flag: 'NOMINAL',
-          data_quality_score: 0.95,
+          sensor_agreement_state: 'multi_sensor_cross_confirmed',
+          data_quality_flag: 'DEGRADED',
+          data_quality_score: 0.42,
           facility_id: 'fac-mrpl-01',
           facility_name: 'MRPL Petrochemical Complex',
           facility_type: 'Petrochemical Refining',
@@ -250,24 +253,23 @@ export const SCENARIOS: Scenario[] = [
           cluster_pixel_count: 3,
           centroid_drift_velocity_mph: 240.0,
           frp_trend_mw_per_hour: 212.4,
-          route_state: 'CRITICAL'
+          route_state: 'UNCERTAIN'
         },
         decision: {
           event_id: 'evt-esc-001',
-          class_id: 1,
-          class_name: 'Accidental Industrial Fire / Explosion',
-          class_probabilities: { 1: 0.82, 2: 0.08, 3: 0.01, 4: 0.01, 5: 0.08 },
-          anomaly_score: 0.89,
-          route_state: 'CRITICAL',
-          risk_score: 84,
-          confidence_state: 'high',
+          class_id: 5,
+          class_name: 'Persistent Flare / Routine Heat',
+          class_probabilities: { 1: 0.40, 2: 0.05, 3: 0.05, 4: 0.05, 5: 0.45 },
+          anomaly_score: 0.72,
+          route_state: 'UNCERTAIN',
+          risk_score: 54,
+          confidence_state: 'medium',
           explanation: [
-            'Facility FRP is 10.2 standard deviations above historical 90-day baseline.',
-            'Spatial expansion: 3 interconnected thermal pixels formed within 20 minutes.',
-            'Independent sensors (VIIRS & MODIS) corroborated detection in full agreement.',
-            'Immediate downwind proximity to crude oil tank farm.'
+            'Thermal surge observed under partial coastal cloud attenuation (data quality 0.42).',
+            'Class probabilities ambiguous: P(industrial)=0.40, P(routine flare)=0.45 — below autonomous threshold.',
+            'Deterministic policy routes to UNCERTAIN for operator verification before emergency escalation.'
           ],
-          recommended_action: 'Trigger high-priority industrial response. Mobilize on-site containment and generate plume dispersion corridor.',
+          recommended_action: 'OPERATOR VERIFICATION REQUIRED: Ambiguous flare surge under cloud cover. Verify on-site cameras before activating full evacuation.',
           model_version: 'triage-0.1.0',
           policy_version: 'arbitrator-0.1.0'
         },
@@ -392,7 +394,7 @@ export const SCENARIOS: Scenario[] = [
             }
           ],
           sensor_count: 2,
-          sensor_agreement_state: 'full_agreement',
+          sensor_agreement_state: 'multi_sensor_cross_confirmed',
           data_quality_flag: 'NOMINAL',
           data_quality_score: 0.95,
           facility_id: 'fac-mrpl-01',
@@ -560,7 +562,7 @@ export const SCENARIOS: Scenario[] = [
             }
           ],
           sensor_count: 1,
-          sensor_agreement_state: 'single_sensor_high_res',
+          sensor_agreement_state: 'single_sensor',
           data_quality_flag: 'NOMINAL',
           data_quality_score: 0.98,
           facility_id: 'fac-ril-01',
@@ -685,7 +687,7 @@ export const SCENARIOS: Scenario[] = [
             }
           ],
           sensor_count: 2,
-          sensor_agreement_state: 'full_agreement',
+          sensor_agreement_state: 'multi_sensor_cross_confirmed',
           data_quality_flag: 'NOMINAL',
           data_quality_score: 0.94,
           facility_id: null,

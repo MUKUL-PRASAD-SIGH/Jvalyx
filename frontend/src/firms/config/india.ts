@@ -27,6 +27,13 @@ export const INDIA_FIT_BOUNDS: LatLngBoundsLiteral = [
 /** FIRMS country code for the archive / country API. */
 export const INDIA_COUNTRY_CODE = 'IND';
 
+/**
+ * FIRMS bounding box (west,south,east,north) for the FIRMS Area API.
+ * NASA FIRMS mandates using the Area API for large nations like India because
+ * the country polygon boundary API triggers server-side calculation timeouts.
+ */
+export const INDIA_FIRMS_BBOX = '67.0,6.5,97.5,37.6';
+
 /** Quick-search shortcuts (keyless — geocoding uses Nominatim). */
 export const INDIA_PLACES: { label: string; center: LatLngTuple; zoom: number }[] = [
   { label: 'Delhi NCR', center: [28.61, 77.21], zoom: 9 },

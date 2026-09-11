@@ -8,15 +8,24 @@ import {
   routeEvent,
 } from '../../utils/math';
 import type { RiskBreakdown, RouteState } from '../../types';
+import type { LiveWeatherData } from '../../services/weather';
+import { matchIndustrialPolygon, distanceToNearestIndustrialM } from './industrialSpatial';
 
 export interface HotspotTriage {
   detection: FireDetection;
   context: {
     nearestFacility: { name: string; distanceM: number } | null;
+    industrialPolygon: {
+      name: string;
+      zone: string;
+      areaSqkm?: number;
+      isMine: boolean;
+    } | null;
     inProtectedArea: { name: string; category: string } | null;
     isIndustrial: boolean;
     facilityZ: number;
     biome: 'industrial' | 'protected-forest' | 'open-terrain';
+    weather?: LiveWeatherData;
   };
   classProbabilities: Record<number, number>;
   classId: number;
@@ -39,24 +48,62 @@ const CLASS_NAMES: Record<number, string> = {
 
 const STUBBLE_MONTHS = new Set([9, 10, 3, 4]); // Sep-Oct (kharif), Mar-Apr (rabi)
 
-export function triageHotspot(detection: FireDetection): HotspotTriage {
-  // nearest known industrial facility
+export function triageHotspot(detection: FireDetection, weather?: LiveWeatherData): HotspotTriage {
+  // 1. Check direct point-in-polygon containment against 278 curated industrial & mining polygons
+  const polyMatch = matchIndustrialPolygon(detection.latitude, detection.longitude);
+  const polyDist = distanceToNearestIndustrialM(detection.latitude, detection.longitude);
+
+  let industrialPolygon: HotspotTriage['context']['industrialPolygon'] = null;
   let nearestFacility: { name: string; distanceM: number } | null = null;
   let facilityBaselineMean = 12;
   let facilityBaselineStd = 6;
-  for (const f of KNOWN_FACILITIES) {
-    const dist = haversine_m(detection.latitude, detection.longitude, f.lat, f.lon);
-    if (!nearestFacility || dist < nearestFacility.distanceM) {
-      nearestFacility = { name: f.name, distanceM: dist };
-      if (dist <= f.radius_m) {
-        facilityBaselineMean = f.baseline_frp_mean;
-        facilityBaselineStd = f.baseline_frp_std;
+
+  if (polyMatch) {
+    const isMine = Boolean(
+      (polyMatch.coal_industrial_zone && polyMatch.coal_industrial_zone.toLowerCase().includes('coal')) ||
+      polyMatch.industrial === 'mine' ||
+      (polyMatch.name && polyMatch.name.toLowerCase().includes('coal'))
+    );
+    industrialPolygon = {
+      name: polyMatch.name || polyMatch.coal_industrial_zone?.replace(/_/g, ' ') || 'Industrial Complex',
+      zone: polyMatch.coal_industrial_zone ? polyMatch.coal_industrial_zone.replace(/_/g, ' ') : 'General Industrial',
+      areaSqkm: polyMatch.area_sqkm,
+      isMine,
+    };
+    nearestFacility = { name: industrialPolygon.name, distanceM: 0 };
+    facilityBaselineMean = isMine ? 22 : 38.4;
+    facilityBaselineStd = isMine ? 6 : 8.0;
+  } else if (polyDist.match && polyDist.distanceM <= 3500) {
+    const isMine = Boolean(
+      (polyDist.match.coal_industrial_zone && polyDist.match.coal_industrial_zone.toLowerCase().includes('coal')) ||
+      polyDist.match.industrial === 'mine'
+    );
+    industrialPolygon = {
+      name: polyDist.match.name || polyDist.match.coal_industrial_zone?.replace(/_/g, ' ') || 'Industrial Complex',
+      zone: polyDist.match.coal_industrial_zone ? polyDist.match.coal_industrial_zone.replace(/_/g, ' ') : 'General Industrial',
+      areaSqkm: polyDist.match.area_sqkm,
+      isMine,
+    };
+    nearestFacility = { name: industrialPolygon.name, distanceM: polyDist.distanceM };
+    facilityBaselineMean = isMine ? 22 : 38.4;
+    facilityBaselineStd = isMine ? 6 : 8.0;
+  } else {
+    // Fall back to known legacy facilities catalog
+    for (const f of KNOWN_FACILITIES) {
+      const dist = haversine_m(detection.latitude, detection.longitude, f.lat, f.lon);
+      if (!nearestFacility || dist < nearestFacility.distanceM) {
+        nearestFacility = { name: f.name, distanceM: dist };
+        if (dist <= f.radius_m) {
+          facilityBaselineMean = f.baseline_frp_mean;
+          facilityBaselineStd = f.baseline_frp_std;
+        }
       }
     }
   }
-  const isIndustrial = !!nearestFacility && nearestFacility.distanceM <= 3500;
 
-  // protected area membership
+  const isIndustrial = Boolean(industrialPolygon || (nearestFacility && nearestFacility.distanceM <= 3500));
+
+  // 2. Protected area membership
   let inProtectedArea: { name: string; category: string } | null = null;
   for (const pa of PROTECTED_AREAS) {
     if (haversine_m(detection.latitude, detection.longitude, pa.lat, pa.lon) <= pa.radiusKm * 1000) {
@@ -75,10 +122,14 @@ export function triageHotspot(detection: FireDetection): HotspotTriage {
       ? 'protected-forest'
       : 'open-terrain';
 
-  // Heuristic class distribution from real detection attributes.
+  // 3. Class distribution from real detection attributes + spatial context
   const month = detection.acquiredAt.getUTCMonth() + 1;
   let probs: Record<number, number>;
-  if (isIndustrial && (facilityZ >= 4 || detection.frp >= 90)) {
+
+  if (industrialPolygon?.isMine) {
+    // Uncontrolled Mining / Coal-Seam Fire (Class 3)
+    probs = { 1: 0.08, 2: 0.04, 3: 0.78, 4: 0.02, 5: 0.08 };
+  } else if (isIndustrial && (facilityZ >= 4 || detection.frp >= 90)) {
     probs = { 1: 0.68, 2: 0.06, 3: 0.04, 4: 0.02, 5: 0.2 };
   } else if (isIndustrial) {
     probs = { 1: 0.08, 2: 0.03, 3: 0.03, 4: 0.02, 5: 0.84 };
@@ -108,7 +159,7 @@ export function triageHotspot(detection: FireDetection): HotspotTriage {
     anomalyScore,
     isIndustrial,
     facilityZ,
-    'full_agreement',
+    'multi_sensor_cross_confirmed',
     detection.confidenceLevel === 'high' ? 0.9 : detection.confidenceLevel === 'nominal' ? 0.7 : 0.45,
   );
 
@@ -120,24 +171,33 @@ export function triageHotspot(detection: FireDetection): HotspotTriage {
     isIndustrial ? 0.7 : inProtectedArea ? 0.55 : 0.35,
   );
 
-  const plume = generatePlumeCorridor([detection.latitude, detection.longitude], 6.5, 135);
+  const windSpeed = weather?.windSpeedMps ?? 6.5;
+  const windDir = weather?.windDirectionDeg ?? 135;
+  const plume = generatePlumeCorridor([detection.latitude, detection.longitude], windSpeed, windDir);
 
   const explanation: string[] = [
-    isIndustrial
-      ? `Detection lies ${(nearestFacility!.distanceM / 1000).toFixed(1)} km from ${nearestFacility!.name}${facilityZ ? ` (FRP ${facilityZ >= 0 ? '+' : ''}${facilityZ}σ vs facility baseline)` : ''}.`
-      : nearestFacility
-        ? `Nearest industrial facility (${nearestFacility.name}) is ${(nearestFacility.distanceM / 1000).toFixed(0)} km away — treated as open terrain.`
-        : 'No industrial facility nearby — treated as open terrain.',
+    industrialPolygon
+      ? industrialPolygon.isMine
+        ? `Detection is inside mapped coal mining boundary: ${industrialPolygon.zone} (${industrialPolygon.name}) — coal-seam fire priority.`
+        : `Detection is inside mapped industrial boundary: ${industrialPolygon.zone} (${industrialPolygon.name})${industrialPolygon.areaSqkm ? ` [${industrialPolygon.areaSqkm.toFixed(1)} km²]` : ''}${facilityZ ? ` (FRP ${facilityZ >= 0 ? '+' : ''}${facilityZ}σ vs baseline)` : ''}.`
+      : isIndustrial
+        ? `Detection lies ${(nearestFacility!.distanceM / 1000).toFixed(1)} km from ${nearestFacility!.name}${facilityZ ? ` (FRP ${facilityZ >= 0 ? '+' : ''}${facilityZ}σ vs facility baseline)` : ''}.`
+        : nearestFacility
+          ? `Nearest industrial facility (${nearestFacility.name}) is ${(nearestFacility.distanceM / 1000).toFixed(0)} km away — treated as open terrain.`
+          : 'No industrial facility nearby — treated as open terrain.',
     inProtectedArea
       ? `Inside ${inProtectedArea.name} (${inProtectedArea.category}) — vegetation-fire priority.`
       : 'Not within a mapped protected area.',
+    weather
+      ? `Live atmospheric wind: ${weather.windSpeedMps.toFixed(1)} m/s toward ${weather.windDirectionDeg}° ${weather.cardinal} (gusts ${weather.windGustsMps.toFixed(1)} m/s, ${weather.temperatureC.toFixed(0)}°C) via Open-Meteo.`
+      : 'Meteorological wind: default baseline (6.5 m/s @ 135° SE).',
     `Observed FRP ${detection.frp.toFixed(1)} MW, brightness ${detection.brightness.toFixed(0)} K, ${detection.daynight === 'D' ? 'daytime' : 'night-time'} overpass, ${detection.confidenceLevel} confidence.`,
     `Isolation-surrogate anomaly score ${anomalyScore.toFixed(2)}; deterministic arbitration → ${routeState}.`,
   ];
 
   return {
     detection,
-    context: { nearestFacility, inProtectedArea, isIndustrial, facilityZ, biome },
+    context: { nearestFacility, industrialPolygon, inProtectedArea, isIndustrial, facilityZ, biome, weather },
     classProbabilities: probs,
     classId,
     className: CLASS_NAMES[classId],

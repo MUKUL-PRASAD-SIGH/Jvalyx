@@ -43,12 +43,26 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         attributionControl: true
       });
 
-      // Dark Matter Basemap Tiles
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> | NASA FIRMS & SIH 2026',
+      // Tactical Dark Basemap Tiles (Authenticated CARTO with Esri fallback)
+      const cartoKey = (import.meta.env.VITE_CARTO_API_KEY as string | undefined)?.trim();
+      const darkTileUrl = cartoKey
+        ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${cartoKey}`
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+
+      L.tileLayer(darkTileUrl, {
+        attribution: cartoKey
+          ? '&copy; <a href="https://carto.com/">CARTO</a> | NASA FIRMS & SIH 2026'
+          : 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ | NASA FIRMS & SIH 2026',
         maxZoom: 19,
-        subdomains: 'abcd'
+        subdomains: cartoKey ? 'abcd' : [],
       }).addTo(map);
+
+      if (!cartoKey) {
+        L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 18, opacity: 0.85, pane: 'shadowPane' }
+        ).addTo(map);
+      }
 
       const layersGroup = L.layerGroup().addTo(map);
       layersGroupRef.current = layersGroup;
@@ -73,7 +87,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         const iconHtml = `
           <div class="relative flex items-center justify-center cursor-pointer">
             ${isSelected ? '<div class="absolute w-8 h-8 rounded-none border-2 border-cyan-400 bg-cyan-400/30 animate-ping"></div>' : ''}
-            <div class="w-${Math.round(radius)}px h-${Math.round(radius)}px px-1 py-0.5 border ${
+            <div style="width: ${Math.round(radius)}px; height: ${Math.round(radius)}px" class="px-1 py-0.5 border ${
               isSelected ? 'border-cyan-300 bg-cyan-500 text-black font-black' : spot.frp > 80 ? 'border-rose-400 bg-rose-600 text-white' : 'border-amber-400 bg-amber-500 text-black'
             } text-[8px] font-mono font-bold shadow-solid-sm flex items-center justify-center">
               ${spot.frp.toFixed(0)}M
@@ -161,7 +175,8 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
 
       poly90.bindTooltip(
         `<div class="font-mono text-xs font-bold text-purple-300">Downwind Probability Corridor (90%)</div>
-         <div class="font-mono text-[10px] text-zinc-300">Wind: ${windSpeedMps} m/s @ ${windDirectionDeg}°</div>`,
+         <div class="font-mono text-[10px] text-zinc-300">Wind: ${windSpeedMps.toFixed(1)} m/s @ ${windDirectionDeg.toFixed(0)}°</div>
+         <div class="font-mono text-[9px] text-purple-400/80">Monte Carlo Plume Envelope · Open-Meteo vectors</div>`,
         { permanent: false, direction: 'right' }
       );
       layerGroup.addLayer(poly90);

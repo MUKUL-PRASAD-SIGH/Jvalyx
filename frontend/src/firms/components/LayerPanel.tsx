@@ -206,6 +206,15 @@ function ReferenceGroup() {
             indent
           />
           <LayerRow
+            label="Industrial & Mining Belts"
+            thumbnail=""
+            swatch="#f59e0b"
+            checked={layers.overlays.industrialZones}
+            onCheck={(v) => dispatch({ type: 'toggleOverlay', key: 'industrialZones', on: v })}
+            info="278 curated industrial, coalfield & steel plant boundaries across India"
+            indent
+          />
+          <LayerRow
             label="Place & Boundary Labels"
             checked={layers.overlays.labels}
             onCheck={(v) => dispatch({ type: 'toggleOverlay', key: 'labels', on: v })}

@@ -100,6 +100,7 @@ export interface LayerState {
   /** Static reference overlays. */
   overlays: {
     protectedAreas: boolean;
+    industrialZones: boolean;
     stateBoundaries: boolean;
     labels: boolean;
   };

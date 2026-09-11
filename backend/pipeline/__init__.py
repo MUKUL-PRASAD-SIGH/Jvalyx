@@ -4,6 +4,7 @@ from .arbitration import arbitrate, risk_score, which_rule_fired
 from .evidence import build_evidence_cards
 from .features import derive_features
 from .fusion import build_fused_event, fusion_state
+from .inference import active_model_version, catboost_inference, get_inference_engine
 from .inference_stub import stub_inference
 from .orchestrator import process_frame
 from .plume import generate_plume_corridor
@@ -13,6 +14,9 @@ from .scenario_loader import ScenarioCatalog
 
 __all__ = [
     "ReplayEngine",
+    "active_model_version",
+    "catboost_inference",
+    "get_inference_engine",
     "ReplayStatus",
     "ScenarioCatalog",
     "arbitrate",

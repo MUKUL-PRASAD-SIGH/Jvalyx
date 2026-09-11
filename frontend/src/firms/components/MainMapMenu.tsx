@@ -4,7 +4,6 @@ import {
   Flame,
   MapPinned,
   Wind,
-  FlaskConical,
   Bell,
   Download,
   GraduationCap,
@@ -13,6 +12,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useFires, useFiresDispatch } from '../state/store';
 import type { PanelMode } from '../types';
+import { mapBus } from '../map/mapBus';
 import { cn } from './ui';
 
 interface Tile {
@@ -20,23 +20,46 @@ interface Tile {
   label: string;
   icon: LucideIcon;
   mode?: PanelMode;
-  soon?: boolean;
 }
 
 const TILES: Tile[] = [
-  { id: 'basic', label: 'Basic Mode', icon: Settings, mode: 'basic' },
-  { id: 'advanced', label: 'Advanced Mode', icon: Settings2, mode: 'advanced' },
-  { id: 'burned', label: 'Burned Area', icon: Flame, mode: 'burned-area' },
-  { id: 'uscanada', label: 'US / Canada', icon: MapPinned, soon: true },
-  { id: 'smoke', label: 'Smoke / Aerosols', icon: Wind, soon: true },
-  { id: 'experimental', label: 'Experimental', icon: FlaskConical, soon: true },
-  { id: 'alerts', label: 'Fire Alerts', icon: Bell, soon: true },
-  { id: 'downloads', label: 'Downloads', icon: Download, soon: true },
+  { id: 'basic', label: 'Basic Layers', icon: Settings, mode: 'basic' },
+  { id: 'advanced', label: 'Advanced Layers', icon: Settings2, mode: 'advanced' },
+  { id: 'burned', label: 'Burn Footprint', icon: Flame, mode: 'burned-area' },
+  { id: 'alerts', label: 'Fire Alerts', icon: Bell },
+  { id: 'downloads', label: 'Data & CSV', icon: Download },
+  { id: 'smoke', label: 'Dynamic Imagery', icon: Wind },
+  { id: 'india', label: 'Recenter India', icon: MapPinned },
 ];
 
 export function MainMapMenu() {
   const { panelMode } = useFires();
   const dispatch = useFiresDispatch();
+
+  const handleTileClick = (tile: Tile) => {
+    if (tile.mode) {
+      dispatch({ type: 'setPanelMode', mode: tile.mode });
+      return;
+    }
+    switch (tile.id) {
+      case 'downloads':
+        dispatch({ type: 'openTable' });
+        dispatch({ type: 'setPanelMode', mode: null });
+        break;
+      case 'alerts':
+        dispatch({ type: 'setColorMode', mode: 'frp' });
+        dispatch({ type: 'setPanelMode', mode: 'basic' });
+        break;
+      case 'smoke':
+        dispatch({ type: 'toggleGibs', id: 'viirs-truecolor' });
+        dispatch({ type: 'setPanelMode', mode: 'basic' });
+        break;
+      case 'india':
+        mapBus.emit('fitIndia');
+        dispatch({ type: 'setPanelMode', mode: null });
+        break;
+    }
+  };
 
   return (
     <div className="w-[300px] overflow-hidden rounded-lg border border-white/10 bg-[#0b0f14] shadow-2xl">
@@ -56,14 +79,12 @@ export function MainMapMenu() {
             <button
               key={tile.id}
               type="button"
-              disabled={tile.soon}
-              onClick={() => tile.mode && dispatch({ type: 'setPanelMode', mode: tile.mode })}
+              onClick={() => handleTileClick(tile)}
               className={cn(
                 'flex aspect-square flex-col items-center justify-center gap-1.5 rounded-md border p-2 text-center text-[10px] font-bold uppercase leading-tight transition-colors',
                 active
                   ? 'border-emerald-400 bg-emerald-500 text-emerald-950'
                   : 'border-white/10 bg-[#1c2530] text-white/80 hover:border-white/25 hover:bg-[#232e3b]',
-                tile.soon && 'cursor-not-allowed opacity-45',
               )}
             >
               <tile.icon className="h-5 w-5" />

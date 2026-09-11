@@ -19,8 +19,8 @@ class MapBus {
     return () => this.handlers[event]?.delete(handler as never);
   }
 
-  emit<K extends keyof MapEvents>(event: K, payload: MapEvents[K]): void {
-    this.handlers[event]?.forEach((h) => (h as Handler<K>)(payload));
+  emit<K extends keyof MapEvents>(event: K, payload?: MapEvents[K]): void {
+    this.handlers[event]?.forEach((h) => (h as Handler<K>)(payload as MapEvents[K]));
   }
 }
 

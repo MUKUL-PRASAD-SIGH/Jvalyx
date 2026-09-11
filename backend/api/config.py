@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from backend.config import load_config
+from backend.pipeline import active_model_version
 
 router = APIRouter(tags=["system"])
 
@@ -10,8 +11,11 @@ router = APIRouter(tags=["system"])
 @router.get("/config")
 async def get_config() -> dict:
     config = load_config()
+    versions = config.versions.model_dump()
+    # The configured default is declarative; report what is actually loaded.
+    versions["model_version"] = active_model_version()
     return {
-        "versions": config.versions.model_dump(),
+        "versions": versions,
         "arbitration": config.arbitration.model_dump(),
         "risk": config.risk.model_dump(),
         "baseline": config.baseline.model_dump(),
@@ -19,7 +23,8 @@ async def get_config() -> dict:
         "plume": config.plume.model_dump(),
         "honesty_notice": (
             "Research prototype. Outputs support analyst review and are not a substitute "
-            "for official emergency response systems. Model outputs are stub-derived until "
-            "trained CatBoost / Isolation Forest models replace them."
+            "for official emergency response systems. Class probabilities come from the "
+            "trained CatBoost classifier; the anomaly score is still stub-derived, as no "
+            "Isolation Forest artifact exists in this repository."
         ),
     }

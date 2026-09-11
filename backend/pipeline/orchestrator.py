@@ -14,7 +14,8 @@ from .consequence import assess_consequence
 from .evidence import build_evidence_cards
 from .features import derive_features, total_frp
 from .fusion import build_fused_event
-from .inference_stub import CLASS_NAMES, stub_inference
+from .inference import get_inference_engine
+from .inference_stub import CLASS_NAMES
 from .plume import generate_plume_corridor
 from .segmentation import mask_from_context
 
@@ -61,8 +62,11 @@ def process_frame(
     config: AppConfig | None = None,
     verification_status: str = "unverified",
     route_override: RouteState | None = None,
+    inference: Any | None = None,
 ) -> EventIntelligence:
+    """``inference`` overrides the active classifier (used to pin the stub in tests)."""
     config = config or load_config()
+    engine = inference or get_inference_engine()
     frame = scenario.frames[frame_index]
     context: dict[str, Any] = dict(frame.context)
     baseline = scenario.baseline
@@ -93,34 +97,34 @@ def process_frame(
     )
 
     features = derive_features(detections, context, baseline)
-    inference = stub_inference.infer(context)
-    probs: dict[int, float] = inference["class_probabilities"]
+    prediction = engine.infer(detections, context)
+    probs: dict[int, float] = prediction["class_probabilities"]
 
     assets, consequence, population = assess_consequence(context)
     route = route_override or arbitrate(
-        probs, inference["anomaly_score"], features, fused.sensor_agreement_state, config
+        probs, prediction["anomaly_score"], features, fused.sensor_agreement_state, config
     )
     fused = fused.model_copy(update={"route_state": route})
 
     exposure = consequence if consequence > 0 else config.risk.exposure_default
     risk = risk_score(probs, features, exposure, config)
     rule_fired = which_rule_fired(
-        probs, inference["anomaly_score"], features, fused.sensor_agreement_state, config
+        probs, prediction["anomaly_score"], features, fused.sensor_agreement_state, config
     )
 
     explanation = _explanation(context, features, probs, fused.sensor_agreement_state.value)
     decision = DecisionOutput(
         event_id=fused.event_id,
-        class_id=inference["class_id"],
-        class_name=CLASS_NAMES[inference["class_id"]],
+        class_id=prediction["class_id"],
+        class_name=CLASS_NAMES[prediction["class_id"]],
         class_probabilities=probs,
-        anomaly_score=inference["anomaly_score"],
+        anomaly_score=prediction["anomaly_score"],
         route_state=route,
         risk_score=risk.total,
         confidence_state=_CONFIDENCE[confidence_state(probs)],
         explanation=explanation,
         recommended_action=str(context.get("recommended_action", "Monitor routine thermal telemetry.")),
-        model_version=inference["model_version"],
+        model_version=prediction["model_version"],
         policy_version=config.versions.policy_version,
         mode=mode,
     )
@@ -129,7 +133,7 @@ def process_frame(
     evidence = build_evidence_cards(
         features=features,
         class_probabilities=probs,
-        anomaly_score=inference["anomaly_score"],
+        anomaly_score=prediction["anomaly_score"],
         fusion_state=fused.sensor_agreement_state,
         rule_fired=rule_fired,
         context=context,

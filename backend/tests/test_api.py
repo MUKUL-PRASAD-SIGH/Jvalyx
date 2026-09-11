@@ -69,3 +69,60 @@ def test_websocket_sends_initial_snapshot(client: TestClient) -> None:
     assert message["type"] == "snapshot"
     assert message["status"]["scenario_id"] == "persistent_flare"
     assert len(message["events"]) == 1
+
+
+def test_firms_proxy_endpoint(client: TestClient) -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.content = b"latitude,longitude\n22.0,80.0\n"
+    mock_resp.headers = {"content-type": "text/csv"}
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_resp
+        res = client.get("/api/firms/area/csv/dummy_key/VIIRS_SNPP_NRT/67,6,97,37/1")
+        assert res.status_code == 200
+        assert b"latitude,longitude" in res.content
+        assert "text/csv" in res.headers["content-type"]
+
+
+def test_weather_endpoint(client: TestClient) -> None:
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "current": {
+            "temperature_2m": 31.0,
+            "relative_humidity_2m": 60.0,
+            "wind_speed_10m": 4.5,
+            "wind_direction_10m": 90.0,
+            "wind_gusts_10m": 7.0,
+        }
+    }
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_resp
+        res = client.get("/api/weather?lat=12.97&lon=74.84")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["temperature_c"] == 31.0
+        assert data["wind_speed_mps"] == 4.5
+        assert data["wind_direction_deg"] == 270.0
+        assert "Open-Meteo" in data["source"]
+
+
+def test_audit_offshore_endpoints(client: TestClient) -> None:
+    res = client.get("/audit/offshore-status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "configured" in data
+    assert "local_total" in data
+
+    sync_res = client.post("/audit/offshore-sync")
+    assert sync_res.status_code == 200
+    sync_data = sync_res.json()
+    assert sync_data["status"] == "success"
+    assert "synced_now" in sync_data
+

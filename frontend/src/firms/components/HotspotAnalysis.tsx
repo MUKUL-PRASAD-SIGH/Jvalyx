@@ -1,7 +1,18 @@
-import { useMemo } from 'react';
-import { X, ShieldAlert, AlertTriangle, CheckCircle2, Flame } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  X,
+  ShieldAlert,
+  AlertTriangle,
+  CheckCircle2,
+  Flame,
+  Wind,
+  Compass,
+  Droplets,
+  Thermometer,
+} from 'lucide-react';
 import { useFires, useFiresDispatch, useVisibleDetections } from '../state/store';
 import { triageHotspot } from '../analysis/triage';
+import { fetchLiveWeather, type LiveWeatherData } from '../../services/weather';
 import { FIRE_CLASSES } from '../../data/scenarios';
 import type { FireClassId, RouteState } from '../../types';
 import { cn } from './ui';
@@ -18,7 +29,35 @@ export function HotspotAnalysis() {
   const visible = useVisibleDetections();
   const detection = visible.find((d) => d.id === selectedId);
 
-  const triage = useMemo(() => (detection ? triageHotspot(detection) : null), [detection]);
+  const [weather, setWeather] = useState<LiveWeatherData | null>(null);
+  const [loadingWeather, setLoadingWeather] = useState(false);
+
+  useEffect(() => {
+    if (!detection) {
+      setWeather(null);
+      return;
+    }
+    let active = true;
+    setLoadingWeather(true);
+    fetchLiveWeather(detection.latitude, detection.longitude)
+      .then((w) => {
+        if (active) {
+          setWeather(w);
+          setLoadingWeather(false);
+        }
+      })
+      .catch(() => {
+        if (active) setLoadingWeather(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [detection?.id, detection?.latitude, detection?.longitude]);
+
+  const triage = useMemo(
+    () => (detection ? triageHotspot(detection, weather ?? undefined) : null),
+    [detection, weather],
+  );
 
   if (!analysisOpen) return null;
 
@@ -43,6 +82,24 @@ export function HotspotAnalysis() {
         ) : (
           <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
             <RouteBanner route={triage.routeState} />
+
+            {triage.context.industrialPolygon && (
+              <div className="rounded border border-amber-500/40 bg-amber-950/40 p-2.5">
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-amber-300 text-[11px]">
+                  <Flame className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  {triage.context.industrialPolygon.isMine ? 'Coalfield / Mining Basin' : 'Industrial Complex Boundary'}
+                </div>
+                <div className="mt-1 text-xs font-bold text-zinc-100">
+                  {triage.context.industrialPolygon.name}
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-400 font-mono">
+                  <span className="text-amber-200/80">{triage.context.industrialPolygon.zone}</span>
+                  {triage.context.industrialPolygon.areaSqkm && (
+                    <span>{triage.context.industrialPolygon.areaSqkm.toFixed(2)} km²</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             <Section title="Classification (heuristic context lens)">
               <div className="mb-2 flex items-center gap-2">
@@ -95,6 +152,57 @@ export function HotspotAnalysis() {
                   </div>
                 ))}
               </div>
+            </Section>
+
+            <Section title="Live Meteorology & Plume (Open-Meteo)">
+              {loadingWeather ? (
+                <div className="py-2 text-white/50 animate-pulse text-[11px]">
+                  Connecting to Open-Meteo for atmospheric vectors…
+                </div>
+              ) : weather ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                    <div className="rounded bg-white/5 p-2 flex items-center gap-2">
+                      <Wind className="h-4 w-4 text-purple-400 shrink-0" />
+                      <div>
+                        <div className="text-[9px] uppercase text-white/40">Wind Speed</div>
+                        <div className="font-bold text-purple-200">{weather.windSpeedMps.toFixed(1)} m/s</div>
+                        <div className="text-[9px] text-white/40">Gusts: {weather.windGustsMps.toFixed(1)} m/s</div>
+                      </div>
+                    </div>
+                    <div className="rounded bg-white/5 p-2 flex items-center gap-2">
+                      <Compass className="h-4 w-4 text-cyan-400 shrink-0" />
+                      <div>
+                        <div className="text-[9px] uppercase text-white/40">Advection Bearing</div>
+                        <div className="font-bold text-cyan-200">{weather.windDirectionDeg}° {weather.cardinal}</div>
+                        <div className="text-[9px] text-white/40">Origin: {weather.windDirectionMetDeg}°</div>
+                      </div>
+                    </div>
+                    <div className="rounded bg-white/5 p-2 flex items-center gap-2">
+                      <Thermometer className="h-4 w-4 text-amber-400 shrink-0" />
+                      <div>
+                        <div className="text-[9px] uppercase text-white/40">Temperature</div>
+                        <div className="font-bold text-amber-200">{weather.temperatureC.toFixed(1)} °C</div>
+                      </div>
+                    </div>
+                    <div className="rounded bg-white/5 p-2 flex items-center gap-2">
+                      <Droplets className="h-4 w-4 text-blue-400 shrink-0" />
+                      <div>
+                        <div className="text-[9px] uppercase text-white/40">Rel. Humidity</div>
+                        <div className="font-bold text-blue-200">{weather.relativeHumidityPct}%</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-[9px] text-white/40 flex justify-between items-center px-1">
+                    <span>{weather.source}</span>
+                    <span className="text-purple-300">50% &amp; 90% Plume Envelope</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[11px] text-white/50">
+                  Using default meteorological baseline (6.5 m/s @ 135° SE).
+                </div>
+              )}
             </Section>
 
             <Section title="Evidence">

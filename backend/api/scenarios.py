@@ -27,6 +27,10 @@ class JumpRequest(BaseModel):
     checkpoint: str
 
 
+class StepRequest(BaseModel):
+    delta: int = Field(default=1, ge=-1, le=1, description="Frames to move: -1 back, +1 forward")
+
+
 @router.get("/scenarios", response_model=list[ScenarioSummary])
 async def list_scenarios() -> list[ScenarioSummary]:
     scenarios = replay_worker.catalog.list()
@@ -94,9 +98,19 @@ async def set_replay_speed(request: SpeedRequest) -> dict:
 @router.post("/replay/jump")
 async def jump_replay(request: JumpRequest) -> dict:
     try:
-        replay_worker.jump_to(request.checkpoint)
+        await replay_worker.jump_to(request.checkpoint)
     except (ValueError, RuntimeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    return replay_worker.status()
+
+
+@router.post("/replay/step")
+async def step_replay(request: StepRequest) -> dict:
+    """Single-frame operator scrub; pauses playback and holds on the target frame."""
+    try:
+        await replay_worker.step(request.delta)
+    except RuntimeError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return replay_worker.status()
 
 

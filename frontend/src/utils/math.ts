@@ -106,17 +106,24 @@ export function routeEvent(
   const p2 = probs[2] || 0;
   const maxP = Math.max(...Object.values(probs));
 
-  const critical =
-    p1 >= cfg.class1_threshold ||
-    p2 >= cfg.class2_threshold ||
-    (isIndustrial && facilityZ >= cfg.facility_z_threshold);
+  const disagreement = fusionState === 'disagreement';
+
+  const strongModelCritical = (p1 >= cfg.class1_threshold || p2 >= cfg.class2_threshold) && !disagreement;
+  const industrialAnomalyCritical =
+    isIndustrial &&
+    facilityZ >= cfg.facility_z_threshold &&
+    qualityScore >= cfg.min_quality &&
+    !disagreement;
+
+  const critical = strongModelCritical || industrialAnomalyCritical;
 
   const uncertain =
+    disagreement ||
     anomalyScore >= cfg.anomaly_threshold ||
-    fusionState === 'disagreement' ||
     qualityScore < cfg.min_quality ||
     maxP < cfg.min_model_confidence;
 
+  if (disagreement) return 'UNCERTAIN';
   if (critical) return 'CRITICAL';
   if (uncertain) return 'UNCERTAIN';
   return 'NORMAL';
@@ -136,6 +143,7 @@ export function generatePlumeCorridor(
   // Convert wind speed to km/h projection
   const baseDistKm = Math.max(1.5, windSpeedMps * 0.4);
 
+  const endpoints: [number, number][] = [];
   // Generate Monte Carlo samples
   for (let i = 0; i < samples; i++) {
     // Normal distribution approximation via Box-Muller
@@ -150,20 +158,32 @@ export function generatePlumeCorridor(
     const distKm = Math.max(1.0, sampledSpeed * 0.4);
     const rad = (sampledDir * Math.PI) / 180;
 
-    // Approximate flat earth km to degree conversion
+    // Flat earth km to degree conversion
     const dLat = (distKm * Math.cos(rad)) / 111.0;
     const dLon = (distKm * Math.sin(rad)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
-    void dLat;
-    void dLon;
+    endpoints.push([lat0 + dLat, lon0 + dLon]);
   }
+
+  function pct(values: number[], q: number): number {
+    const ordered = [...values].sort((a, b) => a - b);
+    return ordered[Math.min(ordered.length - 1, Math.floor(q * ordered.length))];
+  }
+
+  // Angular half-width of the corridor derived from the sampled bearing spread
+  const bearings = endpoints.map(([lat, lon]) => {
+    const angle = (Math.atan2(lon - lon0, lat - lat0) * 180) / Math.PI;
+    return (((angle - windDirectionDeg + 180) % 360) + 360) % 360 - 180;
+  });
+
+  const half90Deg = Math.max(12.0, (pct(bearings, 0.95) - pct(bearings, 0.05)) / 2);
+  const half50Deg = Math.max(6.0, half90Deg * 0.5);
+
+  const spread90Rad = (half90Deg * Math.PI) / 180;
+  const spread50Rad = (half50Deg * Math.PI) / 180;
 
   const radCentral = (windDirectionDeg * Math.PI) / 180;
   const centralLat = lat0 + (baseDistKm * Math.cos(radCentral)) / 111.0;
   const centralLon = lon0 + (baseDistKm * Math.sin(radCentral)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
-
-  // Build 90% wide envelope (angular spread ~ +/- 24 degrees)
-  const spread90Rad = (24 * Math.PI) / 180;
-  const spread50Rad = (12 * Math.PI) / 180;
 
   const left90Lat = lat0 + (baseDistKm * 1.15 * Math.cos(radCentral - spread90Rad)) / 111.0;
   const left90Lon = lon0 + (baseDistKm * 1.15 * Math.sin(radCentral - spread90Rad)) / (111.0 * Math.cos((lat0 * Math.PI) / 180));
