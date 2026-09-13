@@ -16,7 +16,7 @@ export const INDIA_CENTER: LatLngTuple = [22.8, 80.5];
 
 export const INDIA_DEFAULT_ZOOM = 5;
 export const INDIA_MIN_ZOOM = 4;
-export const INDIA_MAX_ZOOM = 12;
+export const INDIA_MAX_ZOOM = 18;
 
 /** Tighter fit used on first paint — mainland + immediate neighbours, not the far islands. */
 export const INDIA_FIT_BOUNDS: LatLngBoundsLiteral = [

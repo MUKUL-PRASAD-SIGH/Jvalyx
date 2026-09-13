@@ -24,7 +24,7 @@ export interface HeaderConnection {
 }
 
 interface HeaderProps {
-  scenarios: { id: string; name: string; category: string }[];
+  scenarios: { id: string; name: string; category: string; frameCount?: number }[];
   /** Demo honesty label (Comprehensive plan §18) — always visible, never inferred. */
   dataMode: 'LIVE DATA' | 'HISTORICAL REPLAY' | 'DEMO SIMULATION MODE';
   currentScenarioId: string;
@@ -47,21 +47,21 @@ interface HeaderProps {
 
 const ROUTE_BADGES: Record<RouteState, { bg: string; icon: typeof ShieldAlert; dot: string; label: string }> = {
   CRITICAL: {
-    bg: 'bg-rose-950/80 border-rose-500 text-rose-200 shadow-solid-rose',
+    bg: 'bg-rose-950/40 border-rose-800/80 text-rose-300',
     icon: ShieldAlert,
     dot: 'bg-rose-500 animate-ping',
     label: 'CRITICAL ESCALATION',
   },
   UNCERTAIN: {
-    bg: 'bg-amber-950/80 border-amber-500 text-amber-200',
+    bg: 'bg-amber-950/40 border-amber-800/80 text-amber-300',
     icon: AlertTriangle,
     dot: 'bg-amber-500 animate-pulse',
     label: 'UNCERTAIN — VERIFY',
   },
   NORMAL: {
-    bg: 'bg-cyan-950/80 border-cyan-500 text-cyan-200 shadow-solid-cyan',
+    bg: 'bg-zinc-900 border-zinc-700 text-zinc-300',
     icon: CheckCircle2,
-    dot: 'bg-cyan-400',
+    dot: 'bg-zinc-400',
     label: 'NORMAL ROUTINE',
   },
 };
@@ -72,10 +72,10 @@ const ConnectionBadge: React.FC<{ connection: HeaderConnection }> = ({ connectio
 
   const style =
     status === 'online'
-      ? 'border-emerald-500 bg-emerald-950/60 text-emerald-200'
+      ? 'border-emerald-900/60 bg-emerald-950/30 text-emerald-400'
       : status === 'connecting'
-        ? 'border-zinc-600 bg-zinc-900 text-zinc-300'
-        : 'border-amber-500 bg-amber-950/60 text-amber-200';
+        ? 'border-zinc-700 bg-zinc-900 text-zinc-400'
+        : 'border-amber-900/60 bg-amber-950/30 text-amber-400';
 
   const label =
     status === 'online'
@@ -99,9 +99,6 @@ const ConnectionBadge: React.FC<{ connection: HeaderConnection }> = ({ connectio
     >
       <Icon className="h-3.5 w-3.5" />
       <span>{label}</span>
-      <span className="hidden text-[9px] font-normal opacity-70 xl:inline">
-        {modelVersion} / {policyVersion}
-      </span>
     </div>
   );
 };
@@ -151,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {scenarios.map((sc) => (
                 <option key={sc.id} value={sc.id} className="bg-background text-zinc-100">
-                  {sc.name} ({sc.category})
+                  [{sc.category.toUpperCase()}] {sc.name}{sc.frameCount ? ` (${sc.frameCount} step${sc.frameCount > 1 ? 's' : ''})` : ''}
                 </option>
               ))}
             </select>
@@ -184,8 +181,9 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onTogglePlay}
-            title={isPlaying ? 'Pause' : 'Play timeline'}
-            className="flex items-center gap-1.5 border border-border bg-background-card px-3 py-1 font-mono text-xs font-bold text-zinc-200 transition-colors hover:border-cyan-500 hover:bg-cyan-950 hover:text-cyan-300"
+            disabled={frameCount <= 1}
+            title={frameCount <= 1 ? 'Single-frame snapshot' : isPlaying ? 'Pause' : 'Play timeline'}
+            className="flex items-center gap-1.5 border border-border bg-background-card px-3 py-1 font-mono text-xs font-bold text-zinc-200 transition-colors hover:border-cyan-500 hover:bg-cyan-950 hover:text-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isPlaying ? (
               <>
@@ -195,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <>
                 <Play className="h-3.5 w-3.5 fill-cyan-400 text-cyan-400" />
-                <span>PLAY REPLAY</span>
+                <span>{frameCount <= 1 ? 'STATIC FRAME' : 'PLAY REPLAY'}</span>
               </>
             )}
           </button>
@@ -224,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => onSpeedChange(speed)}
                 className={`border-r border-border px-2 py-0.5 transition-colors last:border-r-0 ${
                   playbackSpeed === speed
-                    ? 'bg-cyan-500/20 font-bold text-cyan-300'
+                    ? 'bg-zinc-700 font-bold text-zinc-100'
                     : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
@@ -241,7 +239,7 @@ export const Header: React.FC<HeaderProps> = ({
                 e.target.value = '';
               }}
               title="Jump to a scenario checkpoint"
-              className="cursor-pointer border border-border bg-background-card px-2 py-1 font-mono text-[11px] text-zinc-300 hover:border-border-highlight focus:border-cyan-500 focus:outline-none"
+              className="cursor-pointer border border-border bg-background-card px-2 py-1 font-mono text-[11px] text-zinc-300 hover:border-border-highlight focus:border-zinc-500 focus:outline-none"
             >
               <option value="">JUMP TO…</option>
               {checkpoints.map((cp) => (
@@ -254,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="ml-1 flex items-center gap-1.5 border-l border-border px-2 font-mono text-xs text-zinc-400">
             <span>STEP:</span>
-            <span className="font-tabular font-bold text-cyan-300">
+            <span className="font-tabular font-semibold text-zinc-100">
               {Math.min(currentFrameIndex + 1, frameCount)}/{frameCount}
             </span>
           </div>
@@ -264,15 +262,14 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3">
           <ConnectionBadge connection={connection} />
 
-          <div className={`flex items-center gap-2.5 border px-3 py-1.5 transition-all ${badge.bg}`}>
-            <span className={`h-2.5 w-2.5 rounded-none ${badge.dot}`} />
-            <BadgeIcon className="h-4 w-4" />
+          <div className={`flex items-center gap-2 border px-3 py-1.5 transition-all ${badge.bg}`}>
+            <BadgeIcon className="h-4 w-4 shrink-0" />
             <span className="font-mono text-xs font-bold tracking-wider">{badge.label}</span>
           </div>
 
           <button
             onClick={onOpenAuditLog}
-            className="flex items-center gap-1.5 border border-border bg-background-card px-2.5 py-1.5 font-mono text-xs text-zinc-300 transition-colors hover:border-cyan-500 hover:bg-background-elevated hover:text-cyan-300"
+            className="flex items-center gap-1.5 border border-border bg-background-card px-2.5 py-1.5 font-mono text-xs text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100"
           >
             <ClipboardList className="h-3.5 w-3.5" />
             AUDIT LOG

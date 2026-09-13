@@ -163,3 +163,12 @@ body,
 input[type='date']::-webkit-calendar-picker-indicator {
   filter: invert(0.8);
 }
+
+/* Ensure map marker images never exceed their Leaflet icon container */
+.leaflet-marker-icon img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+}

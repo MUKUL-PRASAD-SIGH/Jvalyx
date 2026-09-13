@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SCENARIOS } from './data/scenarios';
-import type { FacilityDigitalTwin, Scenario } from './types';
+import type { FacilityDigitalTwin } from './types';
 import { Header } from './components/Header';
 import { TacticalMap } from './components/TacticalMap';
 import { IntelligenceSidebar } from './components/IntelligenceSidebar';
@@ -42,13 +42,19 @@ export function DigitalTwinApp() {
   const usingBackend = backend.status === 'online' && backend.frame !== null;
 
   // Scenario list for the picker: backend catalog when live, bundled pack when not.
-  const scenarioOptions: Pick<Scenario, 'id' | 'name' | 'category'>[] = usingBackend
+  const scenarioOptions: { id: string; name: string; category: string; frameCount?: number }[] = usingBackend
     ? backend.scenarios.map((s) => ({
         id: s.scenario_id,
         name: s.title,
         category: s.mode,
+        frameCount: s.frame_count,
       }))
-    : local.scenarios.map((s) => ({ id: s.id, name: s.name, category: s.category }));
+    : local.scenarios.map((s) => ({
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        frameCount: s.frames.length,
+      }));
 
   const frame = usingBackend ? backend.frame! : local.frame;
   const facility =
@@ -87,6 +93,15 @@ export function DigitalTwinApp() {
         jump: undefined,
       };
 
+  const handleTogglePlay = () => {
+    if (frameIndex >= frameCount - 1 && !isPlaying) {
+      actions.reset();
+      setTimeout(() => actions.togglePlay(), 120);
+    } else {
+      actions.togglePlay();
+    }
+  };
+
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-background text-zinc-100 selection:bg-cyan-900 selection:text-cyan-100">
       <Header
@@ -107,7 +122,7 @@ export function DigitalTwinApp() {
         }}
         checkpoints={usingBackend ? backend.checkpoints : []}
         onSelectScenario={actions.selectScenario}
-        onTogglePlay={actions.togglePlay}
+        onTogglePlay={handleTogglePlay}
         onReset={actions.reset}
         onSpeedChange={actions.setSpeed}
         onStep={actions.step}
@@ -134,7 +149,7 @@ export function DigitalTwinApp() {
 
         {/* Right: intelligence summary & operator actions */}
         <div className="flex flex-col lg:col-span-5">
-          <IntelligenceSidebar frame={frame} onVerify={actions.verify} />
+          <IntelligenceSidebar frame={frame} facility={facility} onVerify={actions.verify} />
         </div>
       </main>
 

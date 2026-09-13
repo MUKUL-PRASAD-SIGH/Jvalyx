@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 $backend = Start-Process -PassThru -NoNewWindow -WorkingDirectory $root `
-    python -ArgumentList "app.py"
+    .\.venv\Scripts\python.exe -ArgumentList "app.py"
 
 try {
     Push-Location (Join-Path $root "frontend")

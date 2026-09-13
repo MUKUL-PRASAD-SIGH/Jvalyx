@@ -32,14 +32,14 @@ export const BaselineDrawer: React.FC<BaselineDrawerProps> = ({ frame, facility 
         data-open={isOpen}
       >
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-300">
-          <Activity className="w-3.5 h-3.5 text-cyan-400" />
+          <Activity className="w-3.5 h-3.5 text-zinc-400" />
           <span>DEEP DIVE TELEMETRY & 90-DAY BASELINE</span>
           <span className="text-zinc-500 font-normal">({facility.name})</span>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
           <span>{isOpen ? 'COLLAPSE' : 'EXPAND TELEMETRY'}</span>
-          {isOpen ? <ChevronUp className="w-4 h-4 text-cyan-400" /> : <ChevronDown className="w-4 h-4" />}
+          {isOpen ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </div>
 
@@ -52,7 +52,7 @@ export const BaselineDrawer: React.FC<BaselineDrawerProps> = ({ frame, facility 
               onClick={() => setActiveTab('chart')}
               className={`pb-1.5 border-b-2 transition-colors flex items-center gap-1.5 ${
                 activeTab === 'chart'
-                  ? 'border-cyan-400 text-cyan-300 font-bold'
+                  ? 'border-zinc-300 text-zinc-100 font-semibold'
                   : 'border-transparent text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -64,7 +64,7 @@ export const BaselineDrawer: React.FC<BaselineDrawerProps> = ({ frame, facility 
               onClick={() => setActiveTab('matrix')}
               className={`pb-1.5 border-b-2 transition-colors flex items-center gap-1.5 ${
                 activeTab === 'matrix'
-                  ? 'border-cyan-400 text-cyan-300 font-bold'
+                  ? 'border-zinc-300 text-zinc-100 font-semibold'
                   : 'border-transparent text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -102,16 +102,16 @@ export const BaselineDrawer: React.FC<BaselineDrawerProps> = ({ frame, facility 
                       type="monotone"
                       dataKey="upper3Sigma"
                       name="+3σ Bound"
-                      stroke="#38bdf8"
+                      stroke="#64748b"
                       strokeDasharray="3 3"
-                      fill="#0284c7"
-                      fillOpacity={0.08}
+                      fill="#475569"
+                      fillOpacity={0.12}
                     />
                     <Line
                       type="monotone"
                       dataKey="mean"
                       name="Historical Mean (μ)"
-                      stroke="#38bdf8"
+                      stroke="#94a3b8"
                       strokeWidth={1.5}
                       dot={false}
                     />
@@ -145,7 +145,7 @@ export const BaselineDrawer: React.FC<BaselineDrawerProps> = ({ frame, facility 
                     {fusedEvent.detections.reduce((a, b) => a + b.frp_mw, 0).toFixed(1)} MW
                   </span>
                 </div>
-                <div className="flex justify-between pt-1 border-t border-border font-bold text-amber-300">
+                <div className="flex justify-between pt-1 border-t border-border font-bold text-zinc-200">
                   <span>Facility Z-Score:</span>
                   <span className="font-tabular">{fusedEvent.facility_frp_zscore.toFixed(2)}σ</span>
                 </div>
@@ -171,13 +171,13 @@ export const BaselineDrawer: React.FC<BaselineDrawerProps> = ({ frame, facility 
                 <tbody>
                   {fusedEvent.detections.map((det, idx) => (
                     <tr key={idx} className="border-b border-border/60">
-                      <td className="p-2 font-bold text-cyan-300">{det.sensor}</td>
+                      <td className="p-2 font-bold text-zinc-200">{det.sensor}</td>
                       <td className="p-2 text-zinc-400">{det.timestamp.replace('T', ' ').replace('Z', '')}</td>
                       <td className="p-2 font-bold text-rose-400">{det.frp_mw.toFixed(1)} MW</td>
                       <td className="p-2 text-zinc-300">{det.bright_ti4_k.toFixed(1)} / {det.bright_ti5_k.toFixed(1)} K</td>
                       <td className="p-2">{det.cloud_flag ? 'CLOUD ATTENUATED' : 'CLEAR'}</td>
                       <td className="p-2 font-bold font-tabular">{(det.quality_score * 100).toFixed(0)}%</td>
-                      <td className="p-2 uppercase font-bold text-amber-300">{fusedEvent.sensor_agreement_state}</td>
+                      <td className="p-2 uppercase font-bold text-zinc-300">{fusedEvent.sensor_agreement_state}</td>
                     </tr>
                   ))}
                 </tbody>
