@@ -231,7 +231,14 @@ export function useLocalReplay(enabled: boolean) {
     checkpoints: [] as string[],
     actions: {
       selectScenario,
-      togglePlay: () => setIsPlaying((p) => !p),
+      togglePlay: () => {
+        setIsPlaying((p) => {
+          if (!p && currentFrameIndex >= scenario.frames.length - 1) {
+            setCurrentFrameIndex(0);
+          }
+          return !p;
+        });
+      },
       reset,
       setSpeed: setPlaybackSpeed,
       step,

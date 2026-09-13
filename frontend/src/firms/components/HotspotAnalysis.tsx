@@ -13,10 +13,12 @@ import {
 import { useFires, useFiresDispatch, useVisibleDetections } from '../state/store';
 import { triageHotspot } from '../analysis/triage';
 import { classifyDetectionBackend, type BackendClassification } from '../analysis/backendClassify';
+import { setClassification } from '../analysis/classificationCache';
 import { fetchLiveWeather, type LiveWeatherData } from '../../services/weather';
 import { FIRE_CLASSES } from '../../data/scenarios';
 import type { FireClassId, RouteState } from '../../types';
 import { cn } from './ui';
+import { FIRE_CLASS_PNG, CLASS_ID_TO_KEY } from '../analysis/iconMap';
 
 const ROUTE_STYLE: Record<RouteState, { bg: string; icon: typeof ShieldAlert; label: string }> = {
   CRITICAL: { bg: 'bg-rose-950/60 border-rose-500 text-rose-200', icon: ShieldAlert, label: 'Critical' },
@@ -72,6 +74,8 @@ export function HotspotAnalysis() {
         if (active) {
           setBackendClassification(result);
           setBackendUnavailable(false);
+          // Persist to cache so FireMap can update the map marker icon immediately
+          setClassification(detection.id, { classId: result.classId, routeState: result.routeState });
         }
       })
       .catch(() => {
@@ -147,9 +151,15 @@ export function HotspotAnalysis() {
 
             <Section title={triage.source === 'model' ? 'Classification (trained CatBoost model)' : 'Classification (offline heuristic lens)'}>
               <div className="mb-2 flex items-center gap-2">
-                <span
-                  className="h-3 w-3"
-                  style={{ background: FIRE_CLASSES[triage.classId as FireClassId]?.color ?? '#f43f5e' }}
+                <img
+                  src={FIRE_CLASS_PNG[CLASS_ID_TO_KEY[triage.classId] ?? 'industrial']}
+                  alt={triage.className}
+                  width={20}
+                  height={20}
+                  className="shrink-0 object-contain"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
                 />
                 <span className="font-bold uppercase tracking-wide">{triage.className}</span>
               </div>
@@ -274,6 +284,44 @@ export function HotspotAnalysis() {
             <p className="rounded border border-white/10 bg-white/5 p-2 text-[10px] leading-relaxed text-white/45">
               {triage.disclaimer}
             </p>
+
+            {/* CRITICAL alert payload card — shown when route is CRITICAL */}
+            {triage.routeState === 'CRITICAL' && (
+              <div className="rounded border border-rose-500/60 bg-rose-950/40 p-3 space-y-1.5 animate-pulse-glow-rose">
+                <div className="text-[10px] font-mono font-black uppercase tracking-widest text-rose-400 flex items-center gap-1.5">
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  OUTBOUND ALERT — PHYSICAL RELAY TRIGGERED
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[11px]">
+                  <div className="flex justify-between col-span-2">
+                    <span className="text-white/40">Facility</span>
+                    <span className="text-rose-200 font-bold truncate ml-2">
+                      {triage.context.industrialPolygon?.name ?? triage.context.nearestFacility?.name ?? 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Lat</span>
+                    <span className="text-white/80">{triage.detection.latitude.toFixed(4)}°</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Lon</span>
+                    <span className="text-white/80">{triage.detection.longitude.toFixed(4)}°</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">FRP</span>
+                    <span className="text-rose-300 font-bold">{triage.detection.frp.toFixed(1)} MW</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Risk Score</span>
+                    <span className="text-rose-300 font-bold">{triage.risk.total}/100</span>
+                  </div>
+                  <div className="flex justify-between col-span-2">
+                    <span className="text-white/40">Acquired</span>
+                    <span className="text-white/80">{triage.detection.acquiredAt.toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </aside>

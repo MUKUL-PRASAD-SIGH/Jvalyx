@@ -52,8 +52,8 @@ export const GlobalNav: React.FC<GlobalNavProps> = ({ view, onSelectView }) => (
             aria-current={active ? 'page' : undefined}
             className={`flex items-center gap-1.5 border px-3 py-1 font-mono text-[11px] font-bold tracking-wider transition-colors ${
               active
-                ? 'border-cyan-500 bg-cyan-950/70 text-cyan-200 shadow-solid-cyan'
-                : 'border-border bg-background-card text-zinc-400 hover:border-border-highlight hover:text-zinc-100'
+                ? 'border-zinc-600 bg-zinc-800 text-zinc-100'
+                : 'border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-900/60 hover:text-zinc-200'
             }`}
           >
             <Icon className="h-3.5 w-3.5" />

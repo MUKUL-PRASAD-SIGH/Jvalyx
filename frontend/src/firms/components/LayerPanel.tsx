@@ -8,6 +8,7 @@ import type { ColorMode } from '../types';
 import { GroupHeader, cn } from './ui';
 import { LayerRow } from './LayerRow';
 import { TimeControls } from './TimeControls';
+import { FIRE_CLASS_PNG } from '../analysis/iconMap';
 
 function PanelShell({
   title,
@@ -70,35 +71,101 @@ function ColorModeTabs() {
   );
 }
 
+const FIRE_CLASSES_CONFIG = [
+  { id: 1, key: 'industrial', label: 'Industrial Fire / Explosion', emoji: '🏢', color: '#ef4444' },
+  { id: 2, key: 'wildfire', label: 'Wildfire / Forest Fire', emoji: '🌲', color: '#22c55e' },
+  { id: 3, key: 'mining', label: 'Mining / Coal-Seam Fire', emoji: '⛏️', color: '#94a3b8' },
+  { id: 4, key: 'agricultural', label: 'Stubble Burning', emoji: '🌾', color: '#f59e0b' },
+  { id: 5, key: 'flare', label: 'Persistent Flare / Routine Heat', emoji: '💥', color: '#a855f7' },
+];
+
 function FiresGroup({ defaultOpen = true }: { defaultOpen?: boolean }) {
-  const { layers } = useFires();
+  const { layers, mapView, enabledClasses } = useFires();
   const dispatch = useFiresDispatch();
   const [open, setOpen] = useState(defaultOpen);
   const on = FIRE_PRODUCTS.filter((p) => layers.products[p.id]).length;
+  const classesOn = Object.values(enabledClasses).filter(Boolean).length;
 
   return (
     <section>
       <GroupHeader
-        label="Fires / Hotspots"
-        count={`${on}/${FIRE_PRODUCTS.length}`}
+        label={mapView === 'classified' ? 'Fire Classes (AI Filter)' : 'Fires / Hotspots'}
+        count={mapView === 'classified' ? `${classesOn}/5` : `${on}/${FIRE_PRODUCTS.length}`}
         open={open}
         onToggle={() => setOpen((v) => !v)}
         action={<Copy className="h-3 w-3" />}
       />
       {open && (
         <>
-          <ColorModeTabs />
-          {FIRE_PRODUCTS.map((p) => (
-            <LayerRow
-              key={p.id}
-              label={p.label}
-              swatch={p.color}
-              checked={layers.products[p.id]}
-              onCheck={(v) => dispatch({ type: 'toggleProduct', id: p.id, on: v })}
-              info={`${p.sensor} · ${p.platform} · ${p.resolution}`}
-              indent
-            />
-          ))}
+          {mapView === 'classified' ? (
+            <div className="space-y-0.5 pt-1">
+              <div className="flex items-center justify-between px-3 py-1 text-[10px] text-white/50 border-b border-white/5">
+                <span className="uppercase tracking-wider">Selectable Fire Types</span>
+                <div className="flex gap-2 font-mono">
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'setAllClasses', on: true })}
+                    className="text-emerald-400 hover:underline"
+                  >
+                    All
+                  </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'setAllClasses', on: false })}
+                    className="text-rose-400 hover:underline"
+                  >
+                    None
+                  </button>
+                </div>
+              </div>
+              {FIRE_CLASSES_CONFIG.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between px-3 py-1.5 hover:bg-white/5 text-xs transition-colors"
+                >
+                  <label className="flex items-center gap-2.5 cursor-pointer flex-1 select-none">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(enabledClasses[c.id])}
+                      onChange={(e) => dispatch({ type: 'toggleClass', classId: c.id, on: e.target.checked })}
+                      className="h-3.5 w-3.5 rounded border-white/30 bg-black/40 text-emerald-500 accent-emerald-500 cursor-pointer"
+                    />
+                    <img
+                      src={FIRE_CLASS_PNG[c.key as keyof typeof FIRE_CLASS_PNG]}
+                      width={16}
+                      height={16}
+                      className="shrink-0 object-contain"
+                      onError={(e) => {
+                        const el = e.target as HTMLImageElement;
+                        el.style.display = 'none';
+                        if (el.nextElementSibling) (el.nextElementSibling as HTMLElement).style.display = 'inline';
+                      }}
+                    />
+                    <span style={{ display: 'none', fontSize: '13px', lineHeight: 1 }}>{c.emoji}</span>
+                    <span className={enabledClasses[c.id] ? 'text-white font-medium' : 'text-white/40 line-through'}>
+                      {c.label}
+                    </span>
+                  </label>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <ColorModeTabs />
+              {FIRE_PRODUCTS.map((p) => (
+                <LayerRow
+                  key={p.id}
+                  label={p.label}
+                  swatch={p.color}
+                  checked={layers.products[p.id]}
+                  onCheck={(v) => dispatch({ type: 'toggleProduct', id: p.id, on: v })}
+                  info={`${p.sensor} · ${p.platform} · ${p.resolution}`}
+                  indent
+                />
+              ))}
+            </>
+          )}
           <div className="flex items-center gap-2 px-2.5 py-2">
             <span className="text-[10px] uppercase text-white/45">Fire opacity</span>
             <input

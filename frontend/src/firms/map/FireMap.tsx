@@ -16,11 +16,15 @@ import { createFireCanvasLayer } from './fireCanvasLayer';
 import { mapBus } from './mapBus';
 import { attachMeasureTool } from './measureTool';
 import { captureMap } from './capture';
+import { onClassificationChange, getAllClassified } from '../analysis/classificationCache';
+import { FIRE_CLASS_PNG, CLASS_ID_TO_KEY } from '../analysis/iconMap';
+import { getFastClassId } from '../analysis/fastClassifier';
 
 export function FireMap() {
   const state = useFires();
   const dispatch = useFiresDispatch();
   const visible = useVisibleDetections();
+  const mapView = state.mapView;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -30,6 +34,8 @@ export function FireMap() {
   const paRef = useRef<L.LayerGroup | null>(null);
   const indRef = useRef<L.GeoJSON | null>(null);
   const fireRef = useRef<ReturnType<typeof createFireCanvasLayer> | null>(null);
+  /** Leaflet marker layer for classified icon overlays */
+  const classIconsRef = useRef<L.LayerGroup | null>(null);
 
   /* -- init -------------------------------------------------------------- */
   useEffect(() => {
@@ -66,10 +72,16 @@ export function FireMap() {
       colorMode: state.layers.colorMode,
       opacity: state.layers.fireOpacity,
       rangeEnd: state.timeRange.end,
+      mapView: state.mapView,
       onSelect: (d) => dispatch({ type: 'select', id: d ? d.id : null }),
     });
     fire.addTo(map);
     fireRef.current = fire;
+
+    // Layer group for classified icon markers (above canvas, below controls)
+    const classIcons = L.layerGroup().addTo(map);
+    classIconsRef.current = classIcons;
+
     mapRef.current = map;
 
     const measure = attachMeasureTool(map);
@@ -263,5 +275,116 @@ export function FireMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.selectedId]);
 
-  return <div ref={containerRef} className="absolute inset-0 z-0 firms-map" />;
+  /* -- update canvas view mode -------------------------------------- */
+  useEffect(() => {
+    fireRef.current?.setMapView(mapView);
+    redrawClassIcons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapView]);
+
+  /* -- icon sizing & selection overlay ------------------------------- */
+  function iconSizeForZoom(zoom: number): number {
+    if (zoom <= 5)  return 12;
+    if (zoom <= 7)  return 14;
+    if (zoom <= 9)  return 16;
+    if (zoom <= 11) return 18;
+    return 20;
+  }
+
+  function redrawClassIcons() {
+    const group = classIconsRef.current;
+    if (!group) return;
+    group.clearLayers();
+
+    // Canvas renders all 6,000+ icons directly at 60 FPS (zero red squares).
+    // We only create an active Leaflet marker for the selected hotspot to provide the glow ring.
+    if (mapView !== 'classified' || !state.selectedId) return;
+
+    const d = visible.find((x) => x.id === state.selectedId);
+    if (!d) return;
+
+    const classified = getAllClassified();
+    const cached = classified.get(d.id);
+    const classId = cached?.classId ?? getFastClassId(d);
+    const routeState = cached?.routeState ?? (d.frp >= 60 ? 'CRITICAL' : d.frp >= 25 ? 'UNCERTAIN' : 'NORMAL');
+    const key = CLASS_ID_TO_KEY[classId] ?? 'agricultural';
+    const src = FIRE_CLASS_PNG[key];
+    const ring = routeState === 'CRITICAL' ? '#ff3b3b'
+      : routeState === 'UNCERTAIN' ? '#f5c542' : '#22d3ee';
+
+    const map = mapRef.current;
+    const zoom = map ? map.getZoom() : 6;
+    const size = iconSizeForZoom(zoom) + 6;
+
+    const iconHtml = `<div style="width:${size}px;height:${size}px;max-width:${size}px;max-height:${size}px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box;">
+      <img src="${src}"
+        style="width:${size}px !important;height:${size}px !important;max-width:${size}px !important;max-height:${size}px !important;object-fit:contain;display:block;filter:drop-shadow(0 0 6px ${ring});cursor:pointer;"
+        onerror="this.style.display='none'" />
+    </div>`;
+
+    const icon = L.divIcon({
+      html: iconHtml,
+      className: 'fire-class-icon-marker',
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+
+    const marker = L.marker([d.latitude, d.longitude], {
+      icon,
+      zIndexOffset: 1000,
+      interactive: true,
+    });
+    group.addLayer(marker);
+  }
+
+  // Redraw on data/selection/view change
+  useEffect(() => { redrawClassIcons(); }, [visible, state.selectedId, mapView]);
+
+  // Redraw on zoom/pan so icons resize and update for current view
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const onMove = () => redrawClassIcons();
+    map.on('moveend zoomend', onMove);
+    return () => { map.off('moveend zoomend', onMove); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, state.selectedId, mapView]);
+
+  // Redraw when backend classifies a new detection
+  useEffect(() => {
+    return onClassificationChange(() => { redrawClassIcons(); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, state.selectedId, mapView]);
+
+  return (
+    <>
+      <div ref={containerRef} className="absolute inset-0 z-0 firms-map" />
+
+      {/* View mode toggle — floating pill bottom-left above scale bar */}
+      <div className="absolute bottom-[52px] left-2 z-[1000] flex overflow-hidden rounded-full border border-white/15 bg-[#0b0f14]/95 shadow-lg backdrop-blur text-[11px] font-bold">
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'setMapView', view: 'satellite' })}
+          className={`px-3 py-1.5 transition-colors ${
+            mapView === 'satellite'
+              ? 'bg-orange-500 text-white'
+              : 'text-white/50 hover:text-white hover:bg-white/10'
+          }`}
+        >
+          Satellite
+        </button>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'setMapView', view: 'classified' })}
+          className={`px-3 py-1.5 transition-colors ${
+            mapView === 'classified'
+              ? 'bg-orange-500 text-white'
+              : 'text-white/50 hover:text-white hover:bg-white/10'
+          }`}
+        >
+          Classified
+        </button>
+      </div>
+    </>
+  );
 }

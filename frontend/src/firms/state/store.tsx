@@ -22,6 +22,7 @@ import { DEFAULT_PRODUCTS, FIRE_PRODUCTS } from '../config/products';
 import { GIBS_DYNAMIC_IMAGERY } from '../config/gibs';
 import { DEFAULT_BASEMAP_ID } from '../config/basemaps';
 import { loadDetections } from '../data/firmsClient';
+import { getFastClassId } from '../analysis/fastClassifier';
 
 function windowToRange(window: Exclude<TimeWindow, 'custom'>, end = new Date()): TimeRange {
   const hours = window === '24h' ? 24 : window === '48h' ? 48 : 24 * 7;
@@ -68,6 +69,10 @@ export interface FiresState {
   playhead: number | null;
   /** bump to force a data refetch */
   reloadNonce: number;
+  /** 'satellite' = normal canvas dots; 'classified' = emoji class markers */
+  mapView: 'satellite' | 'classified';
+  /** Fire classes enabled in classified view (classId 1-5) */
+  enabledClasses: Record<number, boolean>;
 }
 
 const initialState: FiresState = {
@@ -87,6 +92,8 @@ const initialState: FiresState = {
   playing: false,
   playhead: null,
   reloadNonce: 0,
+  mapView: 'satellite',
+  enabledClasses: { 1: true, 2: true, 3: true, 4: true, 5: true },
 };
 
 type Action =
@@ -96,6 +103,8 @@ type Action =
   | { type: 'setTimeWindow'; window: Exclude<TimeWindow, 'custom'> }
   | { type: 'setCustomRange'; start: Date; end: Date }
   | { type: 'toggleProduct'; id: ProductId; on?: boolean }
+  | { type: 'toggleClass'; classId: number; on?: boolean }
+  | { type: 'setAllClasses'; on: boolean }
   | { type: 'setFireOpacity'; value: number }
   | { type: 'setColorMode'; mode: ColorMode }
   | { type: 'setBasemap'; id: string }
@@ -115,7 +124,8 @@ type Action =
   | { type: 'setPlaying'; playing: boolean }
   | { type: 'setPlayhead'; value: number | null }
   | { type: 'advancePlayhead' }
-  | { type: 'reload' };
+  | { type: 'reload' }
+  | { type: 'setMapView'; view: 'satellite' | 'classified' };
 
 function reducer(state: FiresState, action: Action): FiresState {
   switch (action.type) {
@@ -136,6 +146,25 @@ function reducer(state: FiresState, action: Action): FiresState {
     case 'toggleProduct': {
       const on = action.on ?? !state.layers.products[action.id];
       return { ...state, layers: { ...state.layers, products: { ...state.layers.products, [action.id]: on } } };
+    }
+    case 'toggleClass': {
+      const on = action.on ?? !state.enabledClasses[action.classId];
+      return {
+        ...state,
+        enabledClasses: { ...state.enabledClasses, [action.classId]: on },
+      };
+    }
+    case 'setAllClasses': {
+      return {
+        ...state,
+        enabledClasses: {
+          1: action.on,
+          2: action.on,
+          3: action.on,
+          4: action.on,
+          5: action.on,
+        },
+      };
     }
     case 'setFireOpacity':
       return { ...state, layers: { ...state.layers, fireOpacity: action.value } };
@@ -201,6 +230,8 @@ function reducer(state: FiresState, action: Action): FiresState {
     }
     case 'reload':
       return { ...state, reloadNonce: state.reloadNonce + 1 };
+    case 'setMapView':
+      return { ...state, mapView: action.view };
     default:
       return state;
   }
@@ -279,18 +310,22 @@ export function useFiresDispatch(): Dispatch<Action> {
   return ctx;
 }
 
-/** Detections filtered by enabled products + active time range + playback cursor. */
+/** Detections filtered by enabled products + active time range + playback cursor + enabled classes. */
 export function useVisibleDetections(): FireDetection[] {
-  const { detections, layers, timeRange, playhead } = useFires();
+  const { detections, layers, timeRange, playhead, mapView, enabledClasses } = useFires();
   return useMemo(() => {
     const start = timeRange.start.getTime();
     const fullEnd = timeRange.end.getTime();
     const end = playhead === null ? fullEnd : start + (fullEnd - start) * playhead;
-    return detections.filter(
-      (d) =>
-        layers.products[d.productId] &&
-        d.acquiredAt.getTime() >= start &&
-        d.acquiredAt.getTime() <= end,
-    );
-  }, [detections, layers.products, timeRange, playhead]);
+    return detections.filter((d) => {
+      if (!layers.products[d.productId]) return false;
+      const t = d.acquiredAt.getTime();
+      if (t < start || t > end) return false;
+      if (mapView === 'classified') {
+        const classId = getFastClassId(d);
+        if (!enabledClasses[classId]) return false;
+      }
+      return true;
+    });
+  }, [detections, layers.products, timeRange, playhead, mapView, enabledClasses]);
 }
