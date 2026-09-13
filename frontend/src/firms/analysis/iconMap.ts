@@ -59,11 +59,11 @@ export function buildClassifiedMarkerHtml(
 
 /** Label list for legend panels */
 export const FIRE_CLASS_LEGEND: { key: FireClassKey; label: string }[] = [
-  { key: 'industrial',   label: 'Industrial Fire' },
+  { key: 'industrial',   label: 'Unusual Industrial Fire' },
   { key: 'wildfire',     label: 'Wildfire / Forest' },
   { key: 'mining',       label: 'Mining / Coal-Seam' },
   { key: 'agricultural', label: 'Stubble Burning' },
-  { key: 'flare',        label: 'Flare / Routine Heat' },
+  { key: 'flare',        label: 'Routine Heat / Flare' },
 ];
 
 /** @deprecated — no longer needed, kept for any leftover imports */

@@ -45,11 +45,11 @@ export function computeRiskScore(
   exposure: number
 ): RiskBreakdown {
   const classWeights: Record<number, number> = {
-    1: 1.00, // Industrial Fire / Explosion
+    1: 1.00, // Unusual Industrial Fire
     2: 0.80, // Wildfire
     3: 0.55, // Mining / Coal-seam
     4: 0.20, // Agriculture
-    5: 0.05  // Routine Flare
+    5: 0.05  // Routine Industrial Heat / Flare
   };
 
   const severity = Object.entries(classProbs).reduce((acc, [cls, p]) => {

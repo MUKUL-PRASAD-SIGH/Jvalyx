@@ -35,7 +35,7 @@ def test_decision_rejects_incomplete_probability_distribution() -> None:
         DecisionOutput(
             event_id="evt-001",
             class_id=1,
-            class_name="Accidental Industrial Fire / Explosion",
+            class_name="Unusual Industrial Fire",
             class_probabilities={1: 0.8, 2: 0.2},
             anomaly_score=0.9,
             route_state=RouteState.CRITICAL,

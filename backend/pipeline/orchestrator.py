@@ -185,7 +185,7 @@ def _explanation(
         f"Sensor consensus: {fusion.replace('_', ' ')}.",
     ]
     if probs.get(1, 0.0) >= 0.45:
-        lines.append(f"Model places {probs[1] * 100:.0f}% probability on an industrial fire / explosion.")
+        lines.append(f"Model places {probs[1] * 100:.0f}% probability on an unusual industrial fire.")
     return lines
 
 

@@ -1,0 +1,72 @@
+{
+  "trained_at_utc": "2026-09-13T14:21:57",
+  "dataset": "jvalyx_labeled_firms_india_v3.csv",
+  "versions": {
+    "catboost": "1.2.10",
+    "sklearn": "1.9.0",
+    "joblib": "1.4.2"
+  },
+  "gpu": true,
+  "cap_per_class": 221289,
+  "train_rows": 780506,
+  "val_rows": 178413,
+  "train_class_counts": {
+    "1": 59584,
+    "2": 177510,
+    "3": 184795,
+    "4": 177872,
+    "5": 180745
+  },
+  "val_class_counts": {
+    "1": 14179,
+    "2": 43779,
+    "3": 36494,
+    "4": 43417,
+    "5": 40544
+  },
+  "catboost": {
+    "feature_names": [
+      "bright_ti4",
+      "bright_ti5",
+      "temp_ratio",
+      "frp",
+      "scan",
+      "track",
+      "daynight",
+      "is_in_industrial_polygon",
+      "distance_to_industrial_m",
+      "facility_type",
+      "lulc_class",
+      "lulc_entropy_500m",
+      "recurrence_days_90d"
+    ],
+    "best_iteration": 403,
+    "macro_f1": 0.9714,
+    "macro_f1_without_landcover_facility": 0.8605,
+    "params": {
+      "loss_function": "MultiClass",
+      "eval_metric": "MultiClass",
+      "iterations": 3000,
+      "learning_rate": 0.08,
+      "depth": 8,
+      "auto_class_weights": "SqrtBalanced",
+      "early_stopping_rounds": 200,
+      "use_best_model": true,
+      "random_seed": 42,
+      "verbose": 200,
+      "task_type": "GPU"
+    }
+  },
+  "isolation_forest": {
+    "features": [
+      "bright_ti4",
+      "bright_ti5",
+      "temp_ratio",
+      "frp",
+      "distance_to_industrial_m"
+    ],
+    "fit_rows": 2000000,
+    "version": "iforest-1.1.0"
+  },
+  "classification_report": "                               precision    recall  f1-score   support\n\n      Unusual industrial fire      0.975     0.957     0.966     14179\n                     Wildfire      0.976     0.993     0.985     43779\n                  Mining fire      0.963     0.931     0.947     36494\n              Stubble burning      0.988     0.995     0.991     43417\nRoutine industrial heat/flare      0.965     0.973     0.969     40544\n\n                     accuracy                          0.974    178413\n                    macro avg      0.973     0.970     0.971    178413\n                 weighted avg      0.973     0.974     0.973    178413\n"
+}

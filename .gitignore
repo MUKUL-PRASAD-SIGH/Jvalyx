@@ -11,3 +11,6 @@ catboost_info/
 data/jvalyx_audit.db
 data/jvalyx_audit.db-shm
 data/jvalyx_audit.db-wal
+
+# Derived training data (multi-GB, regenerable from raw FIRMS exports) - not source.
+/data/training/

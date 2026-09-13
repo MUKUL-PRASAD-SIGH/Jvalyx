@@ -51,7 +51,7 @@ def _detection(**overrides) -> Detection:
 def test_artifact_matches_documented_feature_schema() -> None:
     model = catboost_inference._load()  # noqa: SLF001 - asserting the artifact contract
     assert tuple(model.feature_names_) == FEATURE_NAMES
-    assert len(FEATURE_NAMES) == 12
+    assert len(FEATURE_NAMES) == 13
     assert tuple(model.get_cat_feature_indices()) == CATEGORICAL_INDICES
     assert [int(c) for c in model.classes_] == [1, 2, 3, 4, 5]
 
@@ -79,7 +79,15 @@ def test_feature_row_is_ordered_and_typed() -> None:
     assert isinstance(row[CATEGORICAL_INDICES[0]], str)
     assert isinstance(row[CATEGORICAL_INDICES[1]], str)
     assert named["facility_type"] in TRAINED_FACILITY_TYPES
-    assert named["lulc_class"] == "50" and lulc_known
+    assert named["lulc_class"] == "50.0" and lulc_known  # artifact's float-formatted token
+    assert named["recurrence_days_90d"] == 0  # absent from context
+
+
+def test_recurrence_feature_from_context_or_replay_persistence() -> None:
+    named = lambda ctx: dict(zip(FEATURE_NAMES, build_feature_row([_detection()], ctx)[0]))  # noqa: E731
+    assert named({"recurrence_days_90d": 37})["recurrence_days_90d"] == 37
+    assert named({"persistence_score": 0.95})["recurrence_days_90d"] == 86  # replay packs: 0-1 score
+    assert named({"recurrence_days_90d": 500})["recurrence_days_90d"] == 90  # clamped to the window
 
 
 def test_event_frp_is_summed_and_radiometrics_frp_weighted() -> None:
@@ -130,7 +138,7 @@ def test_real_inference_returns_valid_distribution_for_every_frame(scenario_id: 
         assert abs(sum(probs.values()) - 1.0) < 1e-6
         assert all(0.0 <= p <= 1.0 for p in probs.values())
         assert intel.decision.class_id == max(probs, key=probs.get)
-        assert intel.decision.model_version == "catboost-multiclass-12f-0.1.0"
+        assert intel.decision.model_version == "catboost-multiclass-13f-0.2.0"
 
 
 def test_anomaly_score_remains_pack_derived_and_separately_versioned() -> None:

@@ -39,11 +39,11 @@ export const IntelligenceSidebar: React.FC<IntelligenceSidebarProps> = ({
   const windSpd = plume?.windSpeedMps ?? 6.5;
 
   const shortNames: Record<number, string> = {
-    1: 'Industrial Fire',
+    1: 'Unusual Industrial Fire',
     2: 'Wildfire',
     3: 'Coal Seam Fire',
     4: 'Agricultural Burn',
-    5: 'Routine Flare',
+    5: 'Routine Heat / Flare',
   };
 
   const classColors: Record<number, string> = {

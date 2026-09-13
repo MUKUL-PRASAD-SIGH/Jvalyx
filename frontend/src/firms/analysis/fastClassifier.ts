@@ -2,18 +2,24 @@ import type { FireDetection } from '../types';
 import { matchIndustrialPolygon } from './industrialSpatial';
 import { PROTECTED_AREAS } from '../config/protectedAreas';
 import { haversine_m } from '../../utils/math';
-import { getClassification } from './classificationCache';
+import { getClassification, getModelMode } from './classificationCache';
 
 const STUBBLE_MONTHS = new Set([9, 10, 3, 4]);
 const fastCache = new Map<string, number>();
 
+/** Class id for a detection whose model result hasn't arrived yet (drawn as a neutral marker). */
+export const PENDING_CLASS_ID = 0;
+
 /**
- * High-performance heuristic classifier (< 0.005 ms per detection)
- * suitable for batching thousands of FIRMS points without lagging the UI thread.
+ * Class for a detection on the map: the model's result when available. While the model is
+ * still loading this returns PENDING_CLASS_ID rather than a heuristic guess, so icons don't
+ * show "stubble" and then flip. The heuristic below is only the offline fallback
+ * (< 0.005 ms per detection).
  */
 export function getFastClassId(d: FireDetection): number {
   const cached = getClassification(d.id);
   if (cached) return cached.classId;
+  if (getModelMode() !== 'offline') return PENDING_CLASS_ID;
 
   const hit = fastCache.get(d.id);
   if (hit !== undefined) return hit;
@@ -30,9 +36,9 @@ export function getFastClassId(d: FireDetection): number {
     if (isMine) {
       classId = 3; // Mining
     } else if (d.frp >= 75) {
-      classId = 1; // Industrial Fire/Explosion
+      classId = 1; // Unusual Industrial Fire
     } else {
-      classId = 5; // Routine Flare / Industrial Heat
+      classId = 5; // Routine Industrial Heat / Flare
     }
   } else {
     let inForest = false;
@@ -86,16 +92,17 @@ export function computeClassBreakdown(detections: FireDetection[]): ClassBreakdo
 
   for (const d of detections) {
     const c = getFastClassId(d);
-    const item = counts[c] ?? counts[4];
+    const item = counts[c];
+    if (!item) continue; // pending: not counted as any class yet
     item.count += 1;
     item.frp += d.frp;
   }
 
   return [
-    { id: 1, key: 'industrial', emoji: '🏢', label: 'Industrial Fire', count: counts[1].count, totalFrp: counts[1].frp },
+    { id: 1, key: 'industrial', emoji: '🏢', label: 'Unusual Industrial Fire', count: counts[1].count, totalFrp: counts[1].frp },
     { id: 2, key: 'wildfire', emoji: '🌲', label: 'Wildfire / Forest', count: counts[2].count, totalFrp: counts[2].frp },
     { id: 3, key: 'mining', emoji: '⛏️', label: 'Mining / Coal-Seam', count: counts[3].count, totalFrp: counts[3].frp },
     { id: 4, key: 'agricultural', emoji: '🌾', label: 'Stubble Burning', count: counts[4].count, totalFrp: counts[4].frp },
-    { id: 5, key: 'flare', emoji: '💥', label: 'Flare / Routine Heat', count: counts[5].count, totalFrp: counts[5].frp },
+    { id: 5, key: 'flare', emoji: '💥', label: 'Routine Heat / Flare', count: counts[5].count, totalFrp: counts[5].frp },
   ];
 }

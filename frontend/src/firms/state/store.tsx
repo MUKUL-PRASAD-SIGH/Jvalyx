@@ -22,7 +22,21 @@ import { DEFAULT_PRODUCTS, FIRE_PRODUCTS } from '../config/products';
 import { GIBS_DYNAMIC_IMAGERY } from '../config/gibs';
 import { DEFAULT_BASEMAP_ID } from '../config/basemaps';
 import { loadDetections } from '../data/firmsClient';
-import { getFastClassId } from '../analysis/fastClassifier';
+import { getFastClassId, PENDING_CLASS_ID } from '../analysis/fastClassifier';
+import { classifyDetectionsBatch } from '../analysis/backendClassify';
+import {
+  getClassification,
+  getClassificationVersion,
+  onClassificationChange,
+  setClassificationsBulk,
+  setModelMode,
+} from '../analysis/classificationCache';
+
+export interface ModelStatus {
+  state: 'idle' | 'classifying' | 'ready' | 'offline';
+  done: number;
+  total: number;
+}
 
 function windowToRange(window: Exclude<TimeWindow, 'custom'>, end = new Date()): TimeRange {
   const hours = window === '24h' ? 24 : window === '48h' ? 48 : 24 * 7;
@@ -73,6 +87,10 @@ export interface FiresState {
   mapView: 'satellite' | 'classified';
   /** Fire classes enabled in classified view (classId 1-5) */
   enabledClasses: Record<number, boolean>;
+  /** Progress of the bulk model classification of loaded detections */
+  modelStatus: ModelStatus;
+  /** Bumped whenever classificationCache changes, so memos re-read it */
+  classificationVersion: number;
 }
 
 const initialState: FiresState = {
@@ -94,6 +112,8 @@ const initialState: FiresState = {
   reloadNonce: 0,
   mapView: 'satellite',
   enabledClasses: { 1: true, 2: true, 3: true, 4: true, 5: true },
+  modelStatus: { state: 'idle', done: 0, total: 0 },
+  classificationVersion: 0,
 };
 
 type Action =
@@ -125,7 +145,9 @@ type Action =
   | { type: 'setPlayhead'; value: number | null }
   | { type: 'advancePlayhead' }
   | { type: 'reload' }
-  | { type: 'setMapView'; view: 'satellite' | 'classified' };
+  | { type: 'setMapView'; view: 'satellite' | 'classified' }
+  | { type: 'setModelStatus'; status: ModelStatus }
+  | { type: 'classificationsChanged'; version: number };
 
 function reducer(state: FiresState, action: Action): FiresState {
   switch (action.type) {
@@ -232,6 +254,10 @@ function reducer(state: FiresState, action: Action): FiresState {
       return { ...state, reloadNonce: state.reloadNonce + 1 };
     case 'setMapView':
       return { ...state, mapView: action.view };
+    case 'setModelStatus':
+      return { ...state, modelStatus: action.status };
+    case 'classificationsChanged':
+      return { ...state, classificationVersion: action.version };
     default:
       return state;
   }
@@ -282,6 +308,49 @@ export function FiresProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabledKey, rangeKey, state.reloadNonce]);
 
+  // Re-render map layers, filters and legend counts whenever classifications change.
+  useEffect(
+    () => onClassificationChange(() => dispatch({ type: 'classificationsChanged', version: getClassificationVersion() })),
+    [],
+  );
+
+  // Classify every loaded detection with the backend model right after data loads, and
+  // apply all results in one update — instead of heuristic icons that change on click.
+  useEffect(() => {
+    const pending = state.detections.filter((d) => !getClassification(d.id));
+    if (state.detections.length === 0) return;
+    if (pending.length === 0) {
+      setModelMode('ready');
+      dispatch({ type: 'setModelStatus', status: { state: 'ready', done: 0, total: 0 } });
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    setModelMode('pending');
+    dispatch({ type: 'setModelStatus', status: { state: 'classifying', done: 0, total: pending.length } });
+    classifyDetectionsBatch(pending, {
+      signal: controller.signal,
+      onProgress: (done, total) => {
+        if (!cancelled) dispatch({ type: 'setModelStatus', status: { state: 'classifying', done, total } });
+      },
+    })
+      .then(({ results, complete }) => {
+        if (cancelled) return;
+        setClassificationsBulk(results, complete ? 'ready' : 'offline');
+        dispatch({
+          type: 'setModelStatus',
+          status: { state: complete ? 'ready' : 'offline', done: results.size, total: pending.length },
+        });
+      })
+      .catch(() => {
+        /* aborted: a newer load superseded this one */
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [state.detections]);
+
   // Timeline playback loop — advances the playhead across the window, then loops.
   useEffect(() => {
     if (!state.playing) return;
@@ -312,7 +381,7 @@ export function useFiresDispatch(): Dispatch<Action> {
 
 /** Detections filtered by enabled products + active time range + playback cursor + enabled classes. */
 export function useVisibleDetections(): FireDetection[] {
-  const { detections, layers, timeRange, playhead, mapView, enabledClasses } = useFires();
+  const { detections, layers, timeRange, playhead, mapView, enabledClasses, classificationVersion } = useFires();
   return useMemo(() => {
     const start = timeRange.start.getTime();
     const fullEnd = timeRange.end.getTime();
@@ -323,9 +392,12 @@ export function useVisibleDetections(): FireDetection[] {
       if (t < start || t > end) return false;
       if (mapView === 'classified') {
         const classId = getFastClassId(d);
-        if (!enabledClasses[classId]) return false;
+        // Pending detections stay visible (neutral marker) until the model answers.
+        if (classId !== PENDING_CLASS_ID && !enabledClasses[classId]) return false;
       }
       return true;
     });
-  }, [detections, layers.products, timeRange, playhead, mapView, enabledClasses]);
+    // classificationVersion: getFastClassId reads the classification cache
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detections, layers.products, timeRange, playhead, mapView, enabledClasses, classificationVersion]);
 }

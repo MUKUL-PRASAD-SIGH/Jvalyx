@@ -23,6 +23,8 @@ def arbitrate(
     fusion_state: SensorAgreementState,
     config: AppConfig,
     lulc_in_vocabulary: bool = True,
+    history_complete: bool = True,
+    on_water: bool = False,
 ) -> RouteState:
     cfg = config.arbitration
     p1 = class_probabilities.get(1, 0.0)
@@ -58,9 +60,17 @@ def arbitrate(
         or quality < cfg.min_quality
         or max_p < cfg.min_model_confidence
         or not lulc_in_vocabulary
+        # Without 90 days of history the recurrence count can be too low, making routine
+        # site heat look like an unusual fire - never settle that as CRITICAL or NORMAL.
+        or not history_complete
     )
 
-    if disagreement:
+    if disagreement or not history_complete:
+        return RouteState.UNCERTAIN
+    # Water land cover under an "unusual industrial fire" is mostly ash ponds, reservoirs,
+    # mine pit lakes and river banks next to routine sites (9 of 11 such CRITICALs in the
+    # week of 2026-09-07). Never auto-escalate it; send it to verification instead.
+    if on_water and class_probabilities and max(class_probabilities, key=class_probabilities.get) == 1:
         return RouteState.UNCERTAIN
     if critical:
         return RouteState.CRITICAL
@@ -119,6 +129,8 @@ def which_rule_fired(
     fusion_state: SensorAgreementState,
     config: AppConfig,
     lulc_in_vocabulary: bool = True,
+    history_complete: bool = True,
+    on_water: bool = False,
 ) -> str:
     cfg = config.arbitration
     p1 = class_probabilities.get(1, 0.0)
@@ -131,8 +143,12 @@ def which_rule_fired(
 
     if disagreement:
         return "UNCERTAIN: sensor disagreement is routed to verification, never suppressed"
+    if not history_complete:
+        return "UNCERTAIN: FIRMS history does not cover the 90 days before this detection - recurrence may be undercounted"
+    if on_water and class_probabilities and max(class_probabilities, key=class_probabilities.get) == 1:
+        return "UNCERTAIN: unusual industrial fire on water land cover (often an ash pond, reservoir or river bank) - verify"
     if p1 >= cfg.class1_threshold:
-        return f"CRITICAL: P(industrial fire) {p1:.2f} >= {cfg.class1_threshold}"
+        return f"CRITICAL: P(unusual industrial fire) {p1:.2f} >= {cfg.class1_threshold}"
     if p2 >= cfg.class2_threshold:
         return f"CRITICAL: P(wildfire) {p2:.2f} >= {cfg.class2_threshold}"
     if (
