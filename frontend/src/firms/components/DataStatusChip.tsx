@@ -6,7 +6,7 @@ import { HAS_MAP_KEY } from '../data/firmsClient';
 import { computeClassBreakdown } from '../analysis/fastClassifier';
 
 export function DataStatusChip() {
-  const { dataStatus, layers, mapView, enabledClasses } = useFires();
+  const { dataStatus, layers, mapView, enabledClasses, modelStatus } = useFires();
   const dispatch = useFiresDispatch();
   const visible = useVisibleDetections();
 
@@ -58,6 +58,20 @@ export function DataStatusChip() {
                 None
               </button>
             </div>
+          </div>
+
+          <div
+            className={`mb-1 text-[9px] font-mono ${
+              modelStatus.state === 'offline' ? 'text-amber-300/90' : 'text-white/55'
+            }`}
+          >
+            {modelStatus.state === 'classifying'
+              ? `Model classifying… ${modelStatus.done.toLocaleString()} / ${modelStatus.total.toLocaleString()}`
+              : modelStatus.state === 'offline'
+                ? 'Model offline — heuristic icons shown'
+                : modelStatus.state === 'ready'
+                  ? 'All fires classified by the model'
+                  : 'Waiting for fire data…'}
           </div>
 
           <div className="space-y-1 text-[11px]">

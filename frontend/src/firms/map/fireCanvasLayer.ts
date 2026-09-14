@@ -1,7 +1,7 @@
 import L from 'leaflet';
 import type { ColorMode, FireDetection } from '../types';
 import { PRODUCTS_BY_ID, colorForFrp, colorForTimeSince } from '../config/products';
-import { getFastClassId } from '../analysis/fastClassifier';
+import { getFastClassId, PENDING_CLASS_ID } from '../analysis/fastClassifier';
 import { CLASS_ID_TO_KEY, FIRE_CLASS_PNG } from '../analysis/iconMap';
 
 const CONFIDENCE_COLOR: Record<'low' | 'nominal' | 'high', string> = {
@@ -194,7 +194,13 @@ export const FireCanvasLayer = L.Layer.extend({
 
       const { iconSize, footprintPx } = computeFireDimensions(zoom, d.latitude, d.productId, d.frp);
 
-      if (isClassified) {
+      if (isClassified && getFastClassId(d) === PENDING_CLASS_ID) {
+        // Model result still loading: neutral marker, no class icon.
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(3, iconSize / 4), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.6)';
+        ctx.fill();
+      } else if (isClassified) {
         const classId = getFastClassId(d);
         const key = CLASS_ID_TO_KEY[classId] ?? 'agricultural';
         const img = CLASS_IMAGES[key];

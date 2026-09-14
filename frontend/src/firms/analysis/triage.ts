@@ -47,11 +47,11 @@ export interface HotspotTriage {
 }
 
 const CLASS_NAMES: Record<number, string> = {
-  1: 'Accidental Industrial Fire / Explosion',
+  1: 'Unusual Industrial Fire',
   2: 'Wildfire or Forest Fire',
   3: 'Uncontrolled Mining / Coal-Seam Fire',
   4: 'Agricultural / Stubble Burning',
-  5: 'Persistent Flare / Routine Heat',
+  5: 'Routine Industrial Heat / Flare',
 };
 
 const STUBBLE_MONTHS = new Set([9, 10, 3, 4]); // Sep-Oct (kharif), Mar-Apr (rabi)

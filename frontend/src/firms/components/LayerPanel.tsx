@@ -72,11 +72,11 @@ function ColorModeTabs() {
 }
 
 const FIRE_CLASSES_CONFIG = [
-  { id: 1, key: 'industrial', label: 'Industrial Fire / Explosion', emoji: '🏢', color: '#ef4444' },
+  { id: 1, key: 'industrial', label: 'Unusual Industrial Fire', emoji: '🏢', color: '#ef4444' },
   { id: 2, key: 'wildfire', label: 'Wildfire / Forest Fire', emoji: '🌲', color: '#22c55e' },
   { id: 3, key: 'mining', label: 'Mining / Coal-Seam Fire', emoji: '⛏️', color: '#94a3b8' },
   { id: 4, key: 'agricultural', label: 'Stubble Burning', emoji: '🌾', color: '#f59e0b' },
-  { id: 5, key: 'flare', label: 'Persistent Flare / Routine Heat', emoji: '💥', color: '#a855f7' },
+  { id: 5, key: 'flare', label: 'Routine Industrial Heat / Flare', emoji: '💥', color: '#a855f7' },
 ];
 
 function FiresGroup({ defaultOpen = true }: { defaultOpen?: boolean }) {

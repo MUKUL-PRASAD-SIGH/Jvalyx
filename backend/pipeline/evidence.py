@@ -75,7 +75,7 @@ def build_evidence_cards(
             title="Decision evidence",
             metrics={
                 "Top class": f"C{top_class} ({class_probabilities.get(top_class, 0.0) * 100:.0f}%)",
-                "P(industrial fire)": f"{class_probabilities.get(1, 0.0) * 100:.0f}%",
+                "P(unusual industrial fire)": f"{class_probabilities.get(1, 0.0) * 100:.0f}%",
                 "Anomaly score": f"{anomaly_score:.2f}",
                 "Sensor consensus": fusion_state.value.replace("_", " "),
                 "Routing rule": rule_fired,

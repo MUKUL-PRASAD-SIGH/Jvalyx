@@ -17,11 +17,13 @@ MODEL_VERSION = "stub-0.1.0"
 ANOMALY_MODEL_VERSION = "iforest-stub-0.1.0"
 
 CLASS_NAMES = {
-    1: "Accidental Industrial Fire / Explosion",
+    # C1 = a normally quiet industrial/flare site suddenly burning; C5 = heat a site produces
+    # routinely (gas flares, furnaces, kilns, power plants). See _stage6_relabel_persistence.py.
+    1: "Unusual Industrial Fire",
     2: "Wildfire or Forest Fire",
     3: "Uncontrolled Mining / Coal-Seam Fire",
     4: "Agricultural / Stubble Burning",
-    5: "Persistent Flare / Routine Heat",
+    5: "Routine Industrial Heat / Flare",
 }
 
 
@@ -59,6 +61,9 @@ class StubInference:
             # vocabulary status is moot here - always "in vocabulary" for the stub path.
             "lulc_in_vocabulary": True,
         }
+
+    def infer_batch(self, items: list[tuple[list[Detection], dict[str, Any]]]) -> list[dict[str, Any]]:
+        return [self.infer(detections, context, live=True) for detections, context in items]
 
 
 stub_inference = StubInference()

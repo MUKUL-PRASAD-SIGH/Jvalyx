@@ -8,14 +8,9 @@ Feature order is load-bearing; ``FEATURE_NAMES`` is asserted against the artifac
 ``feature_names_`` when the model loads, so a retrained model with a different schema
 fails loudly instead of silently scoring garbage.
 
-Two artifact limitations were measured directly from ``catboost_model.cbm`` and are
-handled explicitly rather than papered over:
-
-* ``lulc_class`` was trained on the ESA WorldCover codes {10, 20, 30, 50, 60, 80}.
-  Cropland (40) is **not** among them, so agricultural scenes fall into CatBoost's
-  unknown-category bucket. We still send the true code and flag it.
-* ``facility_type`` has exactly one trained category, ``general_industrial``; every
-  other string lands in the same unknown bucket, so the column carries almost no signal.
+``lulc_class`` categories in the artifact are float-formatted strings ("40.0"), see
+``model_lulc_token``. After the model runs, ``landcover.apply_landcover_rules`` zeroes
+wildfire/mine/stubble on water or snow; no other post-processing is applied.
 
 The anomaly score is **not** produced here — no Isolation Forest artifact exists in the
 repo. It continues to come from the replay pack and is versioned separately so the two
@@ -33,12 +28,13 @@ from typing import Any
 from backend.models import Detection
 
 from .inference_stub import ANOMALY_MODEL_VERSION, CLASS_NAMES, stub_inference
+from .landcover import apply_landcover_rules
 
 logger = logging.getLogger(__name__)
 
 ARTIFACT_PATH = Path(__file__).resolve().parents[1] / "models" / "artifacts" / "catboost_model.cbm"
 IFOREST_ARTIFACT_PATH = Path(__file__).resolve().parents[1] / "models" / "artifacts" / "isolation_forest.joblib"
-MODEL_VERSION = "catboost-multiclass-12f-0.1.0"
+MODEL_VERSION = "catboost-multiclass-13f-0.2.0"
 
 #: Exact training order. Index 9 and 10 are the categorical columns.
 FEATURE_NAMES: tuple[str, ...] = (
@@ -54,13 +50,23 @@ FEATURE_NAMES: tuple[str, ...] = (
     "facility_type",
     "lulc_class",
     "lulc_entropy_500m",
+    # Distinct earlier days (1-90) with a detection in the same ~1.1 km cell; separates
+    # routine site heat (C5) from a normally quiet site suddenly burning (C1). Live values
+    # come from backend/pipeline/recurrence.py.
+    "recurrence_days_90d",
 )
+RECURRENCE_WINDOW_DAYS = 90
 CATEGORICAL_INDICES: tuple[int, int] = (9, 10)
 
-#: Land-cover codes the artifact actually learned (classes 1-5).
-TRAINED_LULC_CODES = frozenset({"10", "20", "30", "40", "50", "60", "80"})
-#: The single facility category the artifact learned.
-TRAINED_FACILITY_TYPES = frozenset({"general_industrial"})
+#: ESA WorldCover codes the artifact learned. The real-data trainer read ``lulc_class`` as a
+#: float column and stringified it, so the model's categories are "40.0", not "40" — a
+#: bare "40" silently lands in CatBoost's unknown bucket. ``model_lulc_token`` bridges that.
+TRAINED_LULC_CODES = frozenset({"10", "20", "30", "40", "50", "60", "70", "80", "90", "95", "100"})
+#: Facility categories the real-data labeler emits (``_stage2_polygon_join.py``).
+TRAINED_FACILITY_TYPES = frozenset({
+    "general_industrial", "mine_quarry", "power_plant", "brickworks", "factory",
+    "other_infrastructure",
+})
 UNKNOWN_FACILITY = "none"
 
 #: Replay-pack / feed land-cover labels -> ESA WorldCover codes.
@@ -91,9 +97,15 @@ def normalize_lulc(raw: Any) -> str:
     value = str(raw or "").strip()
     if not value:
         return "0"
-    if value.isdigit():
-        return value
-    return LULC_LABEL_TO_CODE.get(value.lower().replace(" ", "_"), "0")
+    try:
+        return str(int(float(value)))
+    except ValueError:
+        return LULC_LABEL_TO_CODE.get(value.lower().replace(" ", "_"), "0")
+
+
+def model_lulc_token(code: str) -> str:
+    """Categorical token the artifact was trained on for a WorldCover code ("40" -> "40.0")."""
+    return f"{code}.0" if code in TRAINED_LULC_CODES else code
 
 
 def normalize_facility_type(raw: Any, *, in_industrial_polygon: bool) -> str:
@@ -151,6 +163,11 @@ def build_feature_row(
     ti5 = weighted("bright_ti5_k", 0.0)
     in_polygon = bool(context.get("is_in_industrial_polygon"))
     lulc_code = normalize_lulc(context.get("lulc_class"))
+    recurrence = context.get("recurrence_days_90d")
+    if recurrence is None and context.get("persistence_score") is not None:
+        # Curated replay packs describe persistence as a 0-1 score, not a day count.
+        recurrence = round(float(context["persistence_score"]) * RECURRENCE_WINDOW_DAYS)
+    recurrence = max(0, min(RECURRENCE_WINDOW_DAYS, int(recurrence or 0)))
 
     row: list[Any] = [
         ti4,
@@ -163,8 +180,9 @@ def build_feature_row(
         1 if in_polygon else 0,
         float(context.get("distance_to_industrial_m", 0.0) or 0.0),
         normalize_facility_type(context.get("facility_type"), in_industrial_polygon=in_polygon),
-        lulc_code,
+        model_lulc_token(lulc_code),
         float(context.get("lulc_entropy_500m", 0.0) or 0.0),
+        recurrence,
     ]
     return row, lulc_code in TRAINED_LULC_CODES
 
@@ -208,6 +226,25 @@ class IsolationForestInference:
         except Exception as e:
             logger.warning(f"Failed to infer anomaly score using Isolation Forest: {e}")
             return -1.0, ANOMALY_MODEL_VERSION
+
+    def get_anomaly_scores(self, features_dicts: list[dict[str, Any]]) -> tuple[list[float], str]:
+        """Batch form of ``get_anomaly_score``: one ``decision_function`` call for all rows."""
+        if not features_dicts:
+            return [], ANOMALY_MODEL_VERSION
+        if not self.available:
+            return [-1.0] * len(features_dicts), ANOMALY_MODEL_VERSION
+        try:
+            model_data = self._load()
+            model = model_data["model"]
+            features = list(getattr(model, "feature_names_in_", model_data["features"]))
+
+            import pandas as pd
+            frame = pd.DataFrame([{f: d.get(f, 0.0) for f in features} for d in features_dicts])
+            scores = 0.5 - model.decision_function(frame)
+            return [max(0.0, min(1.0, float(s))) for s in scores], model_data["version"]
+        except Exception as e:
+            logger.warning(f"Failed to infer anomaly scores using Isolation Forest: {e}")
+            return [-1.0] * len(features_dicts), ANOMALY_MODEL_VERSION
 
 
 iforest_inference = IsolationForestInference()
@@ -263,18 +300,23 @@ class CatBoostInference:
         reproducible demos, falling back to the real model only when nothing is pinned -
         never the other way around, or every curated frame would drift with the model.
         """
+        if live:
+            # Same code path as the batch live endpoint, so a clicked fire can never get a
+            # different answer than the map's bulk classification gave it.
+            return self.infer_batch([(detections, context)])[0]
         model = self._load()
         row, lulc_known = build_feature_row(detections, context)
         pool = self._pool([row], cat_features=list(CATEGORICAL_INDICES))
         raw = model.predict_proba(pool)[0]
 
-        probabilities = {int(model.classes_[i]): float(p) for i, p in enumerate(raw)}
-        # Repair float drift so the distribution still sums to exactly 1.0.
-        drift = 1.0 - sum(probabilities.values())
-        top = max(probabilities, key=probabilities.get)
-        probabilities[top] = probabilities[top] + drift
-
+        model_probabilities = {int(model.classes_[i]): float(p) for i, p in enumerate(raw)}
         features_dict = dict(zip(FEATURE_NAMES, row))
+
+        # One hard physical constraint: no wildfire/mine/stubble on water or snow.
+        probabilities, landcover_rule = apply_landcover_rules(
+            model_probabilities, normalize_lulc(context.get("lulc_class"))
+        )
+        top = max(probabilities, key=probabilities.get)
 
         pinned = context.get("stub_anomaly_score")
         if live or pinned is None:
@@ -295,7 +337,52 @@ class CatBoostInference:
             "anomaly_model_version": anomaly_version,
             "features": features_dict,
             "lulc_in_vocabulary": lulc_known,
+            "model_class_probabilities": model_probabilities,
+            "landcover_rule": landcover_rule,
         }
+
+
+    def infer_batch(
+        self, items: list[tuple[list[Detection], dict[str, Any]]]
+    ) -> list[dict[str, Any]]:
+        """Live inference for many events at once: one ``predict_proba`` and one Isolation
+        Forest call for the whole batch. Always uses the real anomaly model (``live=True``
+        semantics), falling back to a pinned/default score only if that model fails."""
+        if not items:
+            return []
+        model = self._load()
+        built = [build_feature_row(detections, context) for detections, context in items]
+        rows = [row for row, _ in built]
+        raw = model.predict_proba(self._pool(rows, cat_features=list(CATEGORICAL_INDICES)))
+        features_dicts = [dict(zip(FEATURE_NAMES, row)) for row in rows]
+        anomaly_scores, iforest_version = iforest_inference.get_anomaly_scores(features_dicts)
+        classes = [int(c) for c in model.classes_]
+
+        results: list[dict[str, Any]] = []
+        for i, (_, context) in enumerate(items):
+            model_probabilities = {classes[j]: float(p) for j, p in enumerate(raw[i])}
+            probabilities, landcover_rule = apply_landcover_rules(
+                model_probabilities, normalize_lulc(context.get("lulc_class"))
+            )
+            top = max(probabilities, key=probabilities.get)
+            anomaly_score, anomaly_version = anomaly_scores[i], iforest_version
+            if anomaly_score < 0:
+                pinned = context.get("stub_anomaly_score")
+                anomaly_score = max(0.0, min(1.0, float(pinned if pinned is not None else 0.1)))
+                anomaly_version = ANOMALY_MODEL_VERSION
+            results.append({
+                "class_probabilities": probabilities,
+                "class_id": top,
+                "class_name": CLASS_NAMES[top],
+                "anomaly_score": anomaly_score,
+                "model_version": MODEL_VERSION,
+                "anomaly_model_version": anomaly_version,
+                "features": features_dicts[i],
+                "lulc_in_vocabulary": built[i][1],
+                "model_class_probabilities": model_probabilities,
+                "landcover_rule": landcover_rule,
+            })
+        return results
 
 
 catboost_inference = CatBoostInference()

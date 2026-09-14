@@ -164,7 +164,7 @@ export function useLocalReplay(enabled: boolean) {
         class_id: simProbs[1] >= 0.45 ? 1 : baseFrame.decision.class_id,
         class_name:
           simProbs[1] >= 0.45
-            ? 'Accidental Industrial Fire / Explosion'
+            ? 'Unusual Industrial Fire'
             : baseFrame.decision.class_name,
         class_probabilities: simProbs,
         anomaly_score: simAnomaly,

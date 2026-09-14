@@ -27,6 +27,29 @@ export interface BackendClassification {
   anomalyModelVersion: string;
 }
 
+/** Request body for one detection. Optional fields the backend validates strictly
+ * (scan/track must be > 0, brightness_secondary >= 0) are omitted when unusable, so one
+ * odd pixel can't fail a whole batch. */
+function toPayload(detection: FireDetection) {
+  const positive = (v: number | undefined | null) => (typeof v === 'number' && v > 0 ? v : undefined);
+  const nonNegative = (v: number | undefined | null) =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined;
+  return {
+    id: detection.id,
+    latitude: detection.latitude,
+    longitude: detection.longitude,
+    brightness: Math.max(0, detection.brightness),
+    brightness_secondary: nonNegative(detection.brightnessSecondary),
+    frp: Math.max(0, detection.frp),
+    scan: positive(detection.scan),
+    track: positive(detection.track),
+    confidence_level: detection.confidenceLevel,
+    daynight: detection.daynight,
+    acquired_at: detection.acquiredAt.toISOString(),
+    instrument: detection.instrument,
+  };
+}
+
 /** Throws on any non-2xx response or network failure — callers should fall back to the
  * local heuristic (`triageHotspot` with no `backend` argument) exactly like the digital
  * twin falls back to the offline replay pack when the backend is unreachable. */
@@ -38,20 +61,7 @@ export async function classifyDetectionBackend(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
-    body: JSON.stringify({
-      id: detection.id,
-      latitude: detection.latitude,
-      longitude: detection.longitude,
-      brightness: detection.brightness,
-      brightness_secondary: detection.brightnessSecondary,
-      frp: detection.frp,
-      scan: detection.scan,
-      track: detection.track,
-      confidence_level: detection.confidenceLevel,
-      daynight: detection.daynight,
-      acquired_at: detection.acquiredAt.toISOString(),
-      instrument: detection.instrument,
-    }),
+    body: JSON.stringify(toPayload(detection)),
   });
   if (!res.ok) {
     throw new Error(`backend triage classify failed: ${res.status}`);
@@ -73,4 +83,45 @@ export async function classifyDetectionBackend(
     modelVersion: data.model_version,
     anomalyModelVersion: data.anomaly_model_version,
   };
+}
+
+export interface BatchClassification {
+  results: Map<string, { classId: number; routeState: string }>;
+  /** False if a chunk failed (backend down / error); `results` then holds what succeeded. */
+  complete: boolean;
+}
+
+/** Classify many detections via `POST /api/triage/classify-batch`, in sequential chunks.
+ * Never rejects for backend failures (returns `complete: false`); rejects only on abort. */
+export async function classifyDetectionsBatch(
+  detections: FireDetection[],
+  options: {
+    signal?: AbortSignal;
+    chunkSize?: number;
+    onProgress?: (done: number, total: number) => void;
+  } = {},
+): Promise<BatchClassification> {
+  const { signal, chunkSize = 1000, onProgress } = options;
+  const results: BatchClassification['results'] = new Map();
+  for (let start = 0; start < detections.length; start += chunkSize) {
+    const chunk = detections.slice(start, start + chunkSize);
+    let data: { results: { id: string; class_id: number; route_state: string }[] };
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/triage/classify-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal,
+        body: JSON.stringify({ detections: chunk.map(toPayload) }),
+      });
+      if (!res.ok) throw new Error(`backend batch classify failed: ${res.status}`);
+      data = await res.json();
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      console.warn('[triage] batch classification failed, falling back to heuristic:', err);
+      return { results, complete: false };
+    }
+    for (const r of data.results) results.set(r.id, { classId: r.class_id, routeState: r.route_state });
+    onProgress?.(Math.min(start + chunk.length, detections.length), detections.length);
+  }
+  return { results, complete: true };
 }

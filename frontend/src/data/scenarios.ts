@@ -4,8 +4,8 @@ import { generatePlumeCorridor } from '../utils/math';
 export const FIRE_CLASSES: Record<number, FireClassInfo> = {
   1: {
     id: 1,
-    name: 'Accidental Industrial Fire / Explosion',
-    description: 'Catastrophic facility fire, petrochemical storage blaze, or explosion',
+    name: 'Unusual Industrial Fire',
+    description: 'Fire at an industrial or flare site that is normally quiet: storage blaze, explosion, or other non-routine event',
     color: '#f43f5e',
     defaultRoute: 'CRITICAL'
   },
@@ -32,8 +32,8 @@ export const FIRE_CLASSES: Record<number, FireClassInfo> = {
   },
   5: {
     id: 5,
-    name: 'Persistent Flare / Routine Heat',
-    description: 'Normal gas flaring or kiln operation consistent with historical baselines',
+    name: 'Routine Industrial Heat / Flare',
+    description: 'Heat a site produces routinely: gas flares, furnaces, kilns, power plants, consistent with its history',
     color: '#38bdf8',
     defaultRoute: 'NORMAL'
   }
@@ -150,7 +150,7 @@ export const SCENARIOS: Scenario[] = [
         decision: {
           event_id: 'evt-esc-001',
           class_id: 5,
-          class_name: 'Persistent Flare / Routine Heat',
+          class_name: 'Routine Industrial Heat / Flare',
           class_probabilities: { 1: 0.05, 2: 0.02, 3: 0.01, 4: 0.02, 5: 0.90 },
           anomaly_score: 0.12,
           route_state: 'NORMAL',
@@ -258,7 +258,7 @@ export const SCENARIOS: Scenario[] = [
         decision: {
           event_id: 'evt-esc-001',
           class_id: 5,
-          class_name: 'Persistent Flare / Routine Heat',
+          class_name: 'Routine Industrial Heat / Flare',
           class_probabilities: { 1: 0.40, 2: 0.05, 3: 0.05, 4: 0.05, 5: 0.45 },
           anomaly_score: 0.72,
           route_state: 'UNCERTAIN',
@@ -418,7 +418,7 @@ export const SCENARIOS: Scenario[] = [
         decision: {
           event_id: 'evt-esc-001',
           class_id: 1,
-          class_name: 'Accidental Industrial Fire / Explosion',
+          class_name: 'Unusual Industrial Fire',
           class_probabilities: { 1: 0.95, 2: 0.03, 3: 0.01, 4: 0.00, 5: 0.01 },
           anomaly_score: 0.98,
           route_state: 'CRITICAL',
@@ -586,7 +586,7 @@ export const SCENARIOS: Scenario[] = [
         decision: {
           event_id: 'evt-flr-001',
           class_id: 5,
-          class_name: 'Persistent Flare / Routine Heat',
+          class_name: 'Routine Industrial Heat / Flare',
           class_probabilities: { 1: 0.02, 2: 0.01, 3: 0.01, 4: 0.01, 5: 0.95 },
           anomaly_score: 0.08,
           route_state: 'NORMAL',
@@ -872,7 +872,7 @@ export const SCENARIOS: Scenario[] = [
         decision: {
           event_id: 'evt-dis-001',
           class_id: 1,
-          class_name: 'Accidental Industrial Fire / Explosion',
+          class_name: 'Unusual Industrial Fire',
           class_probabilities: { 1: 0.42, 2: 0.08, 3: 0.18, 4: 0.02, 5: 0.30 },
           anomaly_score: 0.76,
           route_state: 'UNCERTAIN',
